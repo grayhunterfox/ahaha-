@@ -12,8 +12,8 @@ enum tipo_post{
 
 typedef struct tipos{
 	int id_tipo;
-	enum tipo_post tipo;
-	unsigned short int calidad;
+	enum tipo_post type;
+	int calidad;
 	} tipo;
 
 typedef struct admins{
@@ -40,7 +40,7 @@ typedef struct comentarios{
 	int id_usuario;
 	int id_comentario_respuesta;
 	char texto[100];
-	unsigned short int calificacion;
+	int calificacion;
 	} comentario;
         
 typedef struct usuarios{
@@ -117,6 +117,39 @@ int copiar_archivo(char *f_org,char *f_dest){
 	return 0;
 }
 
+int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
+	FILE *fp_org = fopen(f_org,"rb"),*fp_dest = fopen(f_dest,"wb"); 
+
+	usuario u;
+	int i, tamanio_origen, tamanio_destino, tamanio_usuario=sizeof(usuario);
+	
+	if(fp_org==NULL || fp_dest==NULL){
+		printf("error al leer o escribir durante la copia\n");
+		return 1; //error al leer o escribir
+	}
+	fseek(fp_org, 0, SEEK_END);
+	tamanio_origen=ftell(fp_org);
+	//comenzar a copiar todos los parametros antes del ultimo
+	for (i=0; i<(tamanio_origen-sizeof(usuario)); i+=sizeof(usuario)){
+		fseek(fp_org, i, SEEK_SET);
+		if (i==id){
+			fseek(fp_org, -tamanio_usuario, SEEK_END); //se posiciona en el principio del ultimo registro de origen
+		}
+		fread(&u, sizeof(usuario), 1, fp_org);
+		fseek(fp_dest, i, SEEK_SET);
+		fwrite(&u, sizeof(usuario), 1, fp_dest);
+	}
+	//finaliza etapa de copiado
+	fseek(fp_dest, 0, SEEK_END);
+	tamanio_destino=ftell(fp_dest);
+	if(tamanio_origen!=(tamanio_destino+sizeof(usuario))){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro usuario dentro de el
+		printf("el nuevo semi archivo_usuario no se copio hasta donde deberia\n");
+		return 1;	//problema al copiar
+	}
+	fclose(fp_org);
+	fclose(fp_dest);
+	return 0;	//copia exitosa
+}
 
 void log_usuario(int id_usuario, FILE *user){
 	char c[10];
@@ -126,7 +159,7 @@ void log_usuario(int id_usuario, FILE *user){
 	printf("\n-----------------------------------------\nPosts actuales:\n");
 	// mostrar_posts(fopen("archivo_post.dat","rb"));
 	printf("\n-----------------------------------------\n");
-	
+
 	menu_user:{ 																	// mismo formato que el menu principal
 		printf("Menu usuario:\n\t1.- Editar Perfil\n\t2.- Seguir a un usuario\n\t3.- Ver un post\n\t4.- Volver.\nSeleccionar: ");
 		gets(c);
@@ -143,9 +176,9 @@ void log_usuario(int id_usuario, FILE *user){
 	FILE *usrs = fopen("archivo_usuario.dat","rb"); 								//ya esta llamado anteriormente
 	FILE *usrstmp = fopen("archivo_usuario_temp.dat","wb");
 	// FILE *postmp = fopen("archivo_post_temp.dat","ab");   
-	
+
 	switch (intc){
-		case 1: modificar_usuario:{ 												//1.- editar perfil
+		case 1: modificar_usuario:{												//1.- editar perfil
 			printf("\nMenu de edicion:\n\t1.- Editar preferencia\n\t2.- Editar biografia\n\t3.- Volver.\nSeleccionar: ");
 			gets(c);
 			if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0){
@@ -162,15 +195,14 @@ void log_usuario(int id_usuario, FILE *user){
 			}
 			
 			switch (intc){
-				case 1:		//nueva preferencia
-					menu_preferencia_usuario:{
+				case 1:	menu_preferencia_usuario:{ //nueva preferencia
 						printf("Nueva preferencia:\n 1.- Graves\n 2.- Oldfags\n 3.- Newfags\n 4.- Gores\n 5.- Happy\n Seleccionar: ");
 						gets(c);
 						if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0){
 						printf(" Respuesta no valida\n\n");
 						goto menu_preferencia_usuario;
 						}
-					}
+						
 					if (strcmp(c,"1")==0){intc=1;}					// no deberia ser un else if igual? total el anterior es un if...
 					else if(strcmp(c,"2")==0){intc=2;}	
 					else if(strcmp(c,"3")==0){intc=3;}
@@ -206,7 +238,7 @@ void log_usuario(int id_usuario, FILE *user){
 					}
 					break;
 				
-				
+				}
 				case 2:		//nueva biografia
 					fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 					fread(&u_original, sizeof(usuario),1, usrs);
@@ -228,7 +260,6 @@ void log_usuario(int id_usuario, FILE *user){
 						while(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){	//crear temp
 							printf("error al crear el archivo temporal de usuarios\n");
 						}
-						
 						fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 						fread(&u_original, sizeof(usuario),1, usrs);					// AHAHA
 						u.id_usuario=id_usuario;										
@@ -252,7 +283,6 @@ void log_usuario(int id_usuario, FILE *user){
 				case 3:	goto menu_user;
 						break;			
 			}
-			
 			
 		case 2:		// seguir a un usuario
 			printf("\n-----------------------------------------\nUsuarios disponibles:\n");
@@ -286,6 +316,7 @@ void log_usuario(int id_usuario, FILE *user){
 				remove("archivo_usuario.dat");								//borrar original
 				rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
 				printf("#follow registrado\n");					//verificar despues el renombramiento, correcto ==0
+				fclose(usrstmp);
 				goto menu_user;
 			}
 			break;
@@ -302,11 +333,12 @@ void log_usuario(int id_usuario, FILE *user){
 	}
 }
 
-
 void log_administrador(int id_admin, FILE *admn){
-	char c[10], name[30];
+	char c[10], name[30], desc[100];
 	int intc=0;
 	usuario u, u_original;
+	post p/*, p_original*/;
+	tipo t/*, t_original*/;
 	time_t strtime;
 	struct tm * timeinfo;
 	
@@ -317,9 +349,9 @@ void log_administrador(int id_admin, FILE *admn){
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 	printf("\n-----------------------------------------\n");
-	printf("Menu administrador:\n\t1.- Crear nuevo usuario\n\t2.- Modificar usuario\n\t3.- Eliminar usuario\n\t4.- Crear nuevo post\n\t5.- Volver al menu principal.\nSeleccionar: ");
+	printf("Menu administrador:\n\t1.- Crear nuevo usuario\n\t2.- Modificar usuario\n\t3.- Eliminar usuario\n\t4.- Crear nuevo post\n\t5.- Modificar post\n\t6.- Eliminar post.\n\t7.- Volver al menu principal.\nSeleccionar: ");
 	gets(c);
-	if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0){
+	if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0 && strcmp(c,"6")!=0 && strcmp(c,"7")!=0){
 		printf(" Respuesta no valida\n\n");
 		goto menu_admin;
 	}
@@ -328,24 +360,30 @@ void log_administrador(int id_admin, FILE *admn){
 	else if(strcmp(c,"3")==0){intc=3;}
 	else if(strcmp(c,"4")==0){intc=4;}
 	else if(strcmp(c,"5")==0){intc=5;}
+	else if(strcmp(c,"6")==0){intc=6;}
+	else if(strcmp(c,"7")==0){intc=7;}
 	}
 	
 	FILE *usrs = fopen("archivo_usuario.dat","rb"); //ya esta llamado anteriormente
 	FILE *usrstmp = fopen("archivo_usuario_temp.dat","wb");
-//	FILE *postmp = fopen("archivo_post_temp.dat","ab");
+	FILE *pos = fopen("archivo_post.dat","rb");
+	FILE *postmp = fopen("archivo_post_temp.dat","wb");
+	FILE *tip = fopen("archivo_tipo.dat","rb");
+	FILE *tiptmp = fopen("archivo_tipo_temp.dat","wb");
 
 	switch (intc){
 		case 1:	{//crear usuario
 				while(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){
 					printf("error al crear el archivo temporal\n");
 				}
+				//obteniendo datos
 				fseek(usrstmp, 0, SEEK_END);
 				u.id_usuario=ftell(usrstmp);//la nueva id esta al final del archivo anterior
 				u.id_usuario_sigue=0;
 				strtime=time(NULL); //fecha y hora actual
 				timeinfo = localtime(&strtime);
 				strftime(u.fecha_creacion, 30, "%d/%m/%y %I:%M%p", timeinfo);
-				while(1){
+				while(1){ //nombre de usuario en uso
 					printf("Ingrese nombre de usuario a crear: ");
 					gets(u.avatar);
 					if (buscar_id_usuario(u.avatar, usrs)==-1){ //no se encuantra el nombre en uso
@@ -454,21 +492,143 @@ void log_administrador(int id_admin, FILE *admn){
 					}
 					fclose(usrstmp);
 				}
+				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 3:	//eliminar usuario
-				break;
-		case 4: //crear post
-				break;
-		case 5:	break; //simplemente termina, por lo que te lleva al menu principal
+		case 3:	borrar_usuario:{ //eliminar usuario
+				printf("Ingrese nombre de usuario a borrar: ");
+				gets(name);
+				int id=buscar_id_usuario(name, usrs); //donde se reemplazara el ultimo usuario
+				if (id==-1){
+					printf("usuario no encontrado\n");
+					goto borrar_usuario;
+				}
+				if (borrar_usuario_temp("archivo_usuario.dat","archivo_usuario_temp.dat",id)==0){
+					remove("archivo_usuario.dat");
+					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
+						printf("Eliminacion exitosa de usuario\n");
+					}
+					else{
+						printf("Problema al renombrar el archivo temporal\n");
+					}
+				}
+				else printf("Error de escritura, la eliminacion no se llevo a cabo\n");
+				goto menu_admin;
+				}
+		case 4: {//crear post
+				if (pos==NULL){
+					printf("actualmente no existen post\n");
+					pos = fopen("archivo_post.dat","wb");
+				}
+				copiar_archivo("archivo_post.dat","archivo_post_temp.dat");
+				//obtencion de datos del post
+				fseek(postmp, 0, SEEK_END);
+				p.id_post=ftell(postmp);
+				p.id_admin=id_admin;	//se pide en los parametros
+				if (tip==NULL){ //si no existe archivo_tipo.dat
+					printf("actualmente no existen tipos de post\n");
+					tip = fopen("archivo_tipo.dat","wb");
+				}
+				copiar_archivo("archivo_tipo.dat","archivo_tipo_temp.dat");
+				fseek(tiptmp, 0, SEEK_END);
+				p.id_tipo=ftell(tiptmp);
+				//datos archivo tipo
+				t.id_tipo=p.id_tipo;
+				menu_tipo_post:{ //peticion del tipo de post
+				printf("Tipo de post:\n   1.- Graves\n   2.- Oldfags\n   3.- Newfags\n   4.- Gores\n   5.- Happy\n Seleccionar: ");
+				gets(c);
+				if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0){
+					printf(" Respuesta no valida\n\n");
+					goto menu_tipo_post;
+				}
+				if (strcmp(c,"1")==0){intc=1;}
+				else if(strcmp(c,"2")==0){intc=2;}
+				else if(strcmp(c,"3")==0){intc=3;}
+				else if(strcmp(c,"4")==0){intc=4;}
+				else if(strcmp(c,"5")==0){intc=5;}
+				
+				switch (intc){ //preferencia
+					case 1:	t.type = graves;
+							break;
+					case 2:	t.type = oldfag;
+							break;
+					case 3:	t.type = newfag;
+							break;
+					case 4:	t.type = gores;
+							break;
+					case 5:	t.type = happy;
+							break;
+				}
+				}
+				menu_calidad_post:{ //peticion de la calidad del tipo
+				printf("Calidad del tipo del post (1-10): ");
+				gets(c);
+				if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0 && strcmp(c,"6")!=0 && strcmp(c,"7")!=0 && strcmp(c,"8")!=0 && strcmp(c,"9")!=0 && strcmp(c,"10")!=0){
+					printf(" Respuesta no valida\n\n");
+					goto menu_calidad_post;
+				}
+				if (strcmp(c,"1")==0){intc=1;}
+				else if(strcmp(c,"2")==0){intc=2;}
+				else if(strcmp(c,"3")==0){intc=3;}
+				else if(strcmp(c,"4")==0){intc=4;}
+				else if(strcmp(c,"5")==0){intc=5;}
+				else if(strcmp(c,"6")==0){intc=6;}
+				else if(strcmp(c,"7")==0){intc=7;}
+				else if(strcmp(c,"8")==0){intc=8;}
+				else if(strcmp(c,"9")==0){intc=9;}
+				else if(strcmp(c,"10")==0){intc=10;}
+				t.calidad=intc;
+				}
+				if (fwrite(&t, sizeof(usuario),1, tiptmp)==1){ //usar un while en vez del if
+					remove("archivo_tipo.dat");
+					if(rename("archivo_tipo_temp.dat","archivo_tipo.dat")!=0){
+						printf("Problema al renombrar el archivo tipo\n");
+					}
+					fclose(usrstmp);
+				}
+				//continuar pidiendo datos del post
+				strtime=time(NULL); //fecha y hora actual
+				timeinfo = localtime(&strtime);
+				strftime(p.fecha, 30, "%d/%m/%y %I:%M%p", timeinfo);
+				printf("Ingrese el nombre del post: "); //imagen se toma como nombre del post
+				gets(name);
+				strcpy(p.imagen,name);
+				printf("Ingrese la leyenda: ");
+				gets(desc);
+				strcpy(p.leyenda,desc);
+				printf("Escriba una descripcion: ");
+				gets(desc);
+				strcpy(p.descripcion,desc);
+				p.likes = 0;
+				p.dislikes = 0;
+				if (fwrite(&p, sizeof(usuario),1, postmp)==1){ //usar un while en vez del if
+				remove("archivo_post.dat");
+				if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("Creacion exitosa del post\n");
+					}
+					else{
+						printf("Problema al renombrar el archivo post\n");
+					}
+					fclose(postmp);
+				}
+				goto menu_admin;
+				}
+		case 5:	break; //editar post
+		case 6:	break; //eliminar post
+		case 7:	break; //simplemente termina, por lo que te lleva al menu principal
 	}
 	fclose(usrs);
 	fclose(usrstmp);
+	fclose(pos);
+	fclose(postmp);
+	fclose(tip);
+	fclose(tiptmp);
 	remove("archivo_usuario_temp.dat");
-//	fclose(postmp);
+	remove("archivo_post_temp.dat");
+	remove("archivo_tipo_temp.dat");
 }
 
-int main(){
+int main(){ //menu de login
 	char name[30], c[10];
 	int intc=0, i, tamanio_archivo_adm, tamanio_archivo_usr;
 	admin a; //para la busqueda de admin
@@ -513,7 +673,6 @@ int main(){
 					printf("el usuario no existe\n   escriba 0 para volver al menu anterior\n\n");
 					goto menu_log_usuario;
 				}
-				printf("usuario encontrado con id %d, iniciando test de log_usuario \n", id);
 				log_usuario(id, usrs);
 				goto menu_principal;
 				break;
