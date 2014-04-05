@@ -195,8 +195,13 @@ void log_administrador(int id_admin, FILE *admn){
 				}
 				strcpy(u.bio,"agrega una descripcion");
 				if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){
-					rename("archivo_usuario_temp.dat","archivo_usuario.dat");
-					printf("Creacion exitosa de usuario\n");
+					remove("archivo_usuario.dat");
+					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
+						printf("Creacion exitosa de usuario\n");
+					}
+					else{
+						printf("Problema al renombrar el archivo temporal\n");
+					}
 					fclose(usrstmp);
 				}
 				goto menu_admin;
@@ -254,7 +259,7 @@ void log_administrador(int id_admin, FILE *admn){
 				strcpy(u.bio,u_original.bio);
 				fseek(usrstmp, id, SEEK_SET);
 				if (fwrite(&u, sizeof(usuario),1, usrstmp)==1){
-					//comprobar si es nesesario borrar el archivo_usuario.dat antes
+					remove("archivo_usuario.dat");
 					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
 						printf("Edicion exitosa de usuario\n");
 					}
@@ -299,7 +304,7 @@ int main(){
 	FILE *admn = fopen("archivo_admin.dat","rb");
 
 	if (usrs==NULL || admn==NULL){
-		printf("por fabor ejecute el programa: 'creador_archivos.c' antes de ejecutar este");
+		printf("por favor ejecute el programa: 'creador_archivos.c' antes de ejecutar este");
 		return 0;
 	}
 	
@@ -309,7 +314,7 @@ int main(){
 				fseek(usrs, 0, SEEK_END);
 				tamanio_archivo_usr=ftell(usrs);
 				if (tamanio_archivo_usr==sizeof(usuario)){	//si no se han creado usuarios
-					printf("no existen usuarios creados, por fabor contactese con un administrador para conseguir una cuenta\n");
+					printf("no existen usuarios creados, por favor contactese con un administrador para conseguir una cuenta\n");
 					goto menu_principal;
 				}
 				printf("Ingrese nombre de usuario: ");
