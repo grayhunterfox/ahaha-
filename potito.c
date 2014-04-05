@@ -1,3 +1,5 @@
+
+
 void log_usuario(int id_usuario, FILE *user){
 	char c[10];
 	int intc=0;
