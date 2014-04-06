@@ -47,7 +47,7 @@ void crear_user_default(){ //creando al usuario nadie que todos siguen
 void crear_admins(){
 	FILE *adm = fopen("archivo_admin.dat","wb");
 	//datos administradores a agregar
-	admin a,b,c,d,e;
+	admin a,b,c,d,e,f,g;
 	rewind(adm);	//es lo mismo que fseek(adm, 0, SEEK_SET);... lleva al inicio
 	int id_marchant=ftell(adm); //en este caso es 0
 	a.id_admin=id_marchant;
@@ -74,6 +74,17 @@ void crear_admins(){
 	e.id_admin=id_camarox;
 	strcpy(e.nombre,"Camarox");
 	e.edad=777;
+	//admins nuevo
+	fseek(adm, id_camarox+sizeof(admin), SEEK_SET);
+	int id_jorjoql=ftell(adm);
+	f.id_admin=id_jorjoql;
+	strcpy(f.nombre,"jorjoql");
+	f.edad=1313;
+	fseek(adm, id_jorjoql+sizeof(admin), SEEK_SET);
+	int id_rafaql=ftell(adm);
+	g.id_admin=id_rafaql;
+	strcpy(g.nombre,"rafaql");
+	g.edad=1313;
 	//	escritura de administradores
 	rewind(adm);
 	fwrite(&a, sizeof(admin),1, adm);
@@ -85,6 +96,10 @@ void crear_admins(){
 	fwrite(&d, sizeof(admin),1, adm);
 	fseek(adm, id_camarox, SEEK_SET);
 	fwrite(&e, sizeof(admin),1, adm);
+	fseek(adm, id_jorjoql, SEEK_SET);
+	fwrite(&f, sizeof(admin),1, adm);
+	fseek(adm, id_rafaql, SEEK_SET);
+	fwrite(&g, sizeof(admin),1, adm);
 	fclose(adm);
 	printf("escritura de administradores en 'archivo_admin.dat' exitosa\n");
 }
