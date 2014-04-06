@@ -239,7 +239,7 @@ void log_usuario(int id_usuario, FILE *user){
 					break;
 				
 				}
-				case 2:		//nueva biografia
+				case 2:	{	//nueva biografia
 					fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 					fread(&u_original, sizeof(usuario),1, usrs);
 					printf("Biografia actual:\n\t%s\n-----------------------------------------\n",u_original.bio);				// (!) que imprima la bio anterior, no se si es correcto...
@@ -266,25 +266,25 @@ void log_usuario(int id_usuario, FILE *user){
 						u.id_usuario_sigue=u_original.id_usuario_sigue;					//
 						strcpy(u.fecha_creacion,u_original.fecha_creacion);				//pasar datos del original al u
 						strcpy(u.avatar,u_original.avatar);								//
-						u.preferencia=u_original.preferencia;									//(!) revisar si es correcto
+						u.preferencia=u_original.preferencia;							//(!) revisar si es correcto
 						fseek(usrstmp, id_usuario, SEEK_SET);
 						if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){				//escritura correct
 							remove("archivo_usuario.dat");								//borrar original
 							rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
 							printf("Edicion de biografia exitosa\n-----------------------------------------\n");//verificar despues el renombramiento, correcto ==0
-							goto modificar_usuario;
+							fclose(usrstmp);
+							goto menu_user;
 						}
 						printf("\nno se guardo biografia D:\n");
 					}
 					else if(strcmp(c,"2")==0) goto modificar_usuario;
 					break;
 				
-				
 				case 3:	goto menu_user;
 						break;			
 			}
-			
-		case 2:		// seguir a un usuario
+			}
+		case 2:{		// seguir a un usuario
 			printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 			mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 			printf("\n-----------------------------------------\n");
@@ -319,9 +319,7 @@ void log_usuario(int id_usuario, FILE *user){
 				fclose(usrstmp);
 				goto menu_user;
 			}
-			break;
-		
-	
+			}break;
 		case 3: 				// ver posts
 		printf("\n-----------------------------------------\nPosts actuales:\nnnnaddah... :3");
 		// mostrar_posts(fopen("archivo_post.dat","rb"));
