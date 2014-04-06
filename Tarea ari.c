@@ -126,6 +126,12 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 		fseek(usrs, com.id_usuario, SEEK_SET);
 		fread(&u, sizeof(usuario), 1, usrs);
 		if (com.id_post==id_post){
+			if (com.id_usuario==0) {
+				printf("%d) [usuario eliminado]: %s\n\n",comentarios_mostrados+1, com.texto);
+				comentarios_mostrados++;
+				continue;
+			}
+			printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
 			printf("%d) %s: %s\n\n",comentarios_mostrados+1, u.avatar, com.texto);
 			comentarios_mostrados++;
 		}
@@ -207,9 +213,42 @@ int copiar_archivo(char *f_org,char *f_dest){
 	return 0;
 }
 
+int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
+	FILE *fp_org = fopen("archivo_comentario.dat","rb"),*fp_dest = fopen("archivo_comentario_temp.dat","wb"); 
+	
+	comentario com;
+	int i, tamanio_origen, tamanio_destino;
+
+	if(fp_org==NULL || fp_dest==NULL){
+		printf("error al leer o escribir durante la copia\n");
+		return 1; //error al leer o escribir
+	}
+	fseek(fp_org, 0, SEEK_END);
+	tamanio_origen=ftell(fp_org);
+	//comenzar a copiar todos los parametros antes del ultimo
+	for (i=0; i<=(tamanio_origen-sizeof(comentario)); i+=sizeof(comentario)){
+		fseek(fp_org, i, SEEK_SET);
+		fread(&com, sizeof(comentario), 1, fp_org);
+		if (com.id_usuario==id_usuario_borrado){
+			com.id_usuario=0;
+		}
+		fseek(fp_dest, i, SEEK_SET);
+		fwrite(&com, sizeof(comentario), 1, fp_dest);
+	}
+	//finaliza etapa de copiado
+	fseek(fp_dest, 0, SEEK_END);
+	tamanio_destino=ftell(fp_dest);
+	if(tamanio_origen!=tamanio_destino){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro usuario dentro de el
+		printf("el nuevo archivo_comentario no se copio hasta donde deberia\n");
+		return 1;	//problema al copiar
+	}
+	fclose(fp_org);
+	fclose(fp_dest);
+	return 0;	//copia exitosa
+}
+
 int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
 	FILE *fp_org = fopen(f_org,"rb"),*fp_dest = fopen(f_dest,"wb"); 
-
 	usuario u;
 	int i, tamanio_origen, tamanio_destino, tamanio_usuario=sizeof(usuario);
 	
@@ -235,6 +274,10 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 	if(tamanio_origen!=(tamanio_destino+sizeof(usuario))){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro usuario dentro de el
 		printf("el nuevo semi archivo_usuario no se copio hasta donde deberia\n");
 		return 1;	//problema al copiar
+	}
+	if (borrar_comentarios_de_usuario(id, tamanio_destino)==1){
+		printf("error al cambiar el nombre de los comentarios del usuario");
+		return 1;
 	}
 	fclose(fp_org);
 	fclose(fp_dest);
