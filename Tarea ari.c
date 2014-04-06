@@ -113,7 +113,7 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 	usuario u;
 	
 	if (archivo==NULL){
-		printf("\tActualmente no existen comentarios\n\n");
+		printf("\t[Actualmente no existen comentarios]\n\n");
 		return 0;
 	}
 	fseek(archivo, 0, SEEK_END);
@@ -490,10 +490,11 @@ void log_usuario(int id_usuario){
 				fread(&p_original, sizeof(post), 1, pos);
 				fseek(admn, p_original.id_admin, SEEK_SET);
 				fread(&a_original, sizeof(admin), 1, admn);
-				printf("\n-----------------------------------------\nPost:\t%s\n",p_original.imagen);
-				printf("Creador del post: %s\tFecha de creacion: %s\n\n",a_original.nombre, p_original.fecha);
-				printf("Leyenda: %s\nDescripcion: %s\n",p_original.leyenda, p_original.descripcion);
-				printf("\t\tlikes: %d  - dislikes: %d\n\n",p_original.likes, p_original.dislikes);
+				printf("\n-----------------------------------------\n");
+				printf("Creador del post:\t%s\nFecha de creacion:\t%s\n\n",a_original.nombre, p_original.fecha);
+				printf("Post:\t\t%s\n",p_original.imagen);
+				printf("Leyenda:\t%s\nDescripcion:\t%s\n",p_original.leyenda, p_original.descripcion);
+				printf("\n\tlikes: %d  - dislikes: %d\n\n",p_original.likes, p_original.dislikes);
 				mostrar_comentarios(comen,id);//comentarios mediante el archivo y la id del post
 				printf("-----------------------------------------\n\n");
 				
@@ -811,6 +812,7 @@ void log_administrador(int id_admin){
 				t.id_tipo=ftell(tiptmp);
 				//datos archivo tipo
 				menu_tipo_post:{ //peticion del tipo de post
+				printf("\n-----------------------------------------\n");
 				printf("Tipo de post:\n   1.- Graves\n   2.- Oldfags\n   3.- Newfags\n   4.- Gores\n   5.- Happy\n Seleccionar: ");
 				gets(c);
 				if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0){
@@ -836,10 +838,10 @@ void log_administrador(int id_admin){
 				}
 				}
 				menu_calidad_post:{ //peticion de la calidad del tipo
-				printf("Calidad del tipo del post (1-10): ");
+				printf("\nCalidad del tipo del post? (1-10): ");
 				gets(c);
 				if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0 && strcmp(c,"6")!=0 && strcmp(c,"7")!=0 && strcmp(c,"8")!=0 && strcmp(c,"9")!=0 && strcmp(c,"10")!=0){
-					printf(" Respuesta no valida\n\n");
+					printf("\tRespuesta invalida\n\n");
 					goto menu_calidad_post;
 				}
 				if (strcmp(c,"1")==0){intc=1;}
@@ -859,13 +861,13 @@ void log_administrador(int id_admin){
 				strtime=time(NULL); //fecha y hora actual
 				timeinfo = localtime(&strtime);
 				strftime(p.fecha, 30, "%d/%m/%y %I:%M%p", timeinfo);
-				printf("Ingrese el nombre del post: "); //imagen se toma como nombre del post
+				printf("Ingrese el nombre del post:\t"); //imagen se toma como nombre del post
 				gets(name);
 				strcpy(p.imagen,name);
-				printf("Ingrese la leyenda: ");
+				printf("Ingrese la leyenda:\t");
 				gets(desc);
 				strcpy(p.leyenda,desc);
-				printf("Escriba una descripcion: ");
+				printf("Escriba una descripcion:\t");
 				gets(desc);
 				strcpy(p.descripcion,desc);
 				p.likes = 0;
@@ -1048,6 +1050,6 @@ int main(){ //menu de login
 	end:
 	fclose(usrs);
 	fclose(admn);
-	printf("\nMarchant give 100 pls :C");
+	printf("\n\t\t\t\tMarchant pls giv 100");
 	return 0;
-}
+} 
