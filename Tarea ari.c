@@ -235,23 +235,24 @@ int borrar_post_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registr
 	return 0;	//copia exitosa
 }
 
-void log_usuario(int id_usuario){
+void log_usuario(int id_usuario, FILE *user){
 	char c[10];
 	int intc=0;
 	usuario u, u_original;
 	
-	menu_user:{ // mismo formato que el menu principal
-		FILE *usrs = fopen("archivo_usuario.dat","rb");
-		fseek(usrs, id_usuario, SEEK_SET);
-		fread(&u_original, sizeof(usuario),1, usrs);
-		printf("\n-----------------------------------------\nPosts actuales:\nCategoria\n");
-		if (u_original.preferencia==graves)	     printf("Graves: ");
-		else if (u_original.preferencia==oldfag) printf("Oldfag: ");
-		else if (u_original.preferencia==newfag) printf("Newfag: ");
-		else if (u_original.preferencia==gores) printf("Gores:  ");
-		else if (u_original.preferencia==happy) printf("Happy:  ");
-		mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
-		printf("\n-----------------------------------------\n");
+	fseek(user, id_usuario, SEEK_SET);
+	fread(&u_original, sizeof(usuario),1, user);
+	
+	printf("\n-----------------------------------------\nPosts actuales:\nCategoria\n");
+	if (u_original.preferencia==graves)	     printf("Graves: ");
+	else if (u_original.preferencia==oldfag) printf("Oldfag: ");
+	else if (u_original.preferencia==newfag) printf("Newfag: ");
+	else if (u_original.preferencia==gores) printf("Gores:  ");
+	else if (u_original.preferencia==happy) printf("Happy:  ");
+	mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
+	printf("\n-----------------------------------------\n");
+
+	menu_user:{ 																	// mismo formato que el menu principal
 		printf("Menu usuario:\n\t1.- Editar Perfil\n\t2.- Seguir a un usuario\n\t3.- Ver un post\n\t4.- Volver.\nSeleccionar: ");
 		gets(c);
 		if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0){
@@ -263,19 +264,20 @@ void log_usuario(int id_usuario){
 		else if(strcmp(c,"3")==0){intc=3;}
 		else if(strcmp(c,"4")==0){intc=4;}
 	}
-
-	FILE *usrs = fopen("archivo_usuario.dat","rb");
+	
+	FILE *usrs = fopen("archivo_usuario.dat","rb"); 								//ya esta llamado anteriormente
 	FILE *usrstmp = fopen("archivo_usuario_temp.dat","wb");
 	// FILE *postmp = fopen("archivo_post_temp.dat","ab");   
 
 	switch (intc){
-		case 1: modificar_usuario:{											//1.- editar perfil
+		case 1: modificar_usuario:{												//1.- editar perfil
 			printf("\nMenu de edicion:\n\t1.- Editar preferencia\n\t2.- Editar biografia\n\t3.- Volver.\nSeleccionar: ");
 			gets(c);
 			if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0){
 				printf(" Respuesta no valida\n\n");
 				goto modificar_usuario;
-			}
+			}}
+		
 			if (strcmp(c,"1")==0){intc=1;}
 			else if(strcmp(c,"2")==0){intc=2;}
 			else if(strcmp(c,"3")==0){intc=3;}
@@ -311,7 +313,7 @@ void log_usuario(int id_usuario){
 					case 5: u.preferencia = happy;
 					break;
 					}
-//.//////////////
+				
 					fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 					fread(&u_original, sizeof(usuario),1, usrs);					// AHAHA
 					u.id_usuario=id_usuario;										
@@ -324,8 +326,7 @@ void log_usuario(int id_usuario){
 						remove("archivo_usuario.dat");								//borrar original
 						rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
 						printf("Edicion de preferencia exitosa\n");					//verificar despues el renombramiento, correcto ==0
-						fclose(usrstmp);
-						goto menu_user;
+						goto modificar_usuario;
 					}
 					break;
 				
@@ -336,7 +337,7 @@ void log_usuario(int id_usuario){
 					printf("Biografia actual:\n\t%s\n-----------------------------------------\n",u_original.bio);				// (!) que imprima la bio anterior, no se si es correcto...
 					
 					menu_nueva_biografia:{
-						printf("ingresar biografia nueva?\n\t1.- Si\n\t2.- Cancelar\nSeleccion: ");
+						printf("ingresar biografía nueva?\n\t1.- Si\n\t2.- Cancelar\nSeleccion: ");
 						gets(c);
 						
 						if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0){
@@ -375,7 +376,6 @@ void log_usuario(int id_usuario){
 						break;			
 			}
 			}
-		}
 		case 2:{		// seguir a un usuario
 			printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 			mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
@@ -428,7 +428,7 @@ void log_administrador(int id_admin, FILE *admn){
 	int intc=0;
 	usuario u, u_original;
 	post p, p_original;
-	tipo t;
+	tipo t/*, t_original*/;
 	time_t strtime;
 	struct tm * timeinfo;
 	
@@ -797,7 +797,7 @@ int main(){ //menu de login
 	char name[30], c[10];
 	int intc=0, i, tamanio_archivo_adm, tamanio_archivo_usr;
 	admin a; //para la busqueda de admin
-	printf(" _    _   _____\n| |  | | |  __ \\ \n| |__| | | |  | |\tJAIDEFINICHON\n|  __  | | |  | |\n| |  | | | |__| |\t\t terrible de calidah\n|_|  |_| |_____/\n\n");
+	printf(" wow    ▌▒█  doge     ▄▀▒▌\tpls compile\n        ▌▒▒█  shibe ▄▀▒▒▒▐\t\t\tsuch program\n       ▐▄▀▒▒▀▀▀▀▄▄▄▀▒▒▒▒▒▐  amaze\n     ▄▄▀░▒▒▒▒▒▒▒▒▒▒█▒▒▄█▒▐ \t ▄▄         ▄▄       ▄▄▄▄▄▄▄▄▄▄▄  \n   ▄▀▒▒░░░░▒▒░░░░▒▒▒▀██▀▒▌ \t▐░░▌       ▐░░▌     ▐░░░░░░░░░░░░▌ \n  ▐▒▒▒▄▄▒▒▒▒░░░░▒▒▒▒▒▒▀▄▒▒▌ \t▐░░▌       ▐░░▌     ▐░░█▀▀▀▀▀▀▀█░░▌\n  ▌░░▌█▀▒▒▒▒▒▄▀█▄▒▒▒▒▒▒▒█▒▐ \t▐░░▌       ▐░░▌     ▐░░▌       ▐░░▌\n ▐░░░▒▒▒▒▒▒▒▒▌██▀▒▒░░░▒▒▒▀▄▌ \t▐░░█▄▄▄▄▄▄▄█░░▌     ▐░░▌       ▐░░▌\n ▌░▒▄██▄▒▒▒▒▒▒▒▒▒░░░░░░▒▒▒▒▌ \t▐░░░░░░░░░░░░░▌     ▐░░▌       ▐░░▌\n▀▒▀▐▄█▄█▌▄░▀▒▒░░░░░░░░░░▒▒▒▐ \t▐░░█▀▀▀▀▀▀▀█░░▌     ▐░░▌       ▐░░▌\n▐▒▒▐▀▐▀▒░▄▄▒▄▒▒▒▒▒▒░▒░▒░▒▒▒▒▌\t▐░░▌       ▐░░▌     ▐░░▌       ▐░░▌\n▐▒▒▒▀▀▄▄▒▒▒▄▒▒▒▒▒▒▒▒░▒░▒░▒▒▐ \t▐░░▌       ▐░░▌     ▐░░█▄▄▄▄▄▄▄█░░▌\n ▌▒▒▒▒▒▒▀▀▀▒▒▒▒▒▒░▒░▒░▒░▒▒▒▌ \t▐░░▌       ▐░░▌     ▐░░░░░░░░░░░░▌ \n ▐▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▒▄▒▒▐ \t ▀▀         ▀▀       ▀▀▀▀▀▀▀▀▀▀▀  \n  ▀▄▒▒▒▒▒▒▒▒▒▒▒░▒░▒░▒▄▒▒▒▒▌ \t\tCUALQUIER DE CALIDAH\n    ▀▄▒▒▒▒▒▒▒▒▒▒▄▄▄▀▒▒▒▒▄▀  \n");
 	menu_principal:{
 	printf("\n-----------------------------------------\n");
 	printf("Menu principal:\n\t1.- Iniciar sesion como usuario\n\t2.- Iniciar sesion como admin\n\t3.- Salir.\nSeleccionar: ");
@@ -838,7 +838,7 @@ int main(){ //menu de login
 					printf("el usuario no existe\n   escriba 0 para volver al menu anterior\n\n");
 					goto menu_log_usuario;
 				}
-				log_usuario(id);
+				log_usuario(id, usrs);
 				goto menu_principal;
 				break;
 		}
