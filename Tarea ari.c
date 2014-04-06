@@ -93,7 +93,7 @@ void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura
 		}
 	}
 	if (post_mostrados==0){
-		printf("\tNo existen post de esta categoria\n\n");
+		printf("No existen post de esta categoria\n\n");
 	}
 	fclose(archivo);
 }
@@ -111,6 +111,25 @@ int buscar_id_usuario(char nombre[30], FILE *archivo){
 			return id;
 		}
 		else if (id==(tamanio_archivo-sizeof(usuario))){ //usuario no encontrado
+			return -1;
+		}
+	}
+	return -1; //algo fallo.. no deberia aparecer nunca
+}
+
+int buscar_id_post(char nombre[30], FILE *archivo){
+	int id, tamanio_archivo;
+	post p;
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	//Busqueda de post en todo el archivo
+	for (id=0; id<=(tamanio_archivo-sizeof(post)); id+=sizeof(post)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&p, sizeof(post), 1, archivo);
+		if (strcmp(nombre, p.imagen)==0){	//usuario encontrado
+			return id;
+		}
+		else if (id==(tamanio_archivo-sizeof(post))){ //usuario no encontrado
 			return -1;
 		}
 	}
@@ -175,6 +194,40 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 	tamanio_destino=ftell(fp_dest);
 	if(tamanio_origen!=(tamanio_destino+sizeof(usuario))){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro usuario dentro de el
 		printf("el nuevo semi archivo_usuario no se copio hasta donde deberia\n");
+		return 1;	//problema al copiar
+	}
+	fclose(fp_org);
+	fclose(fp_dest);
+	return 0;	//copia exitosa
+}
+
+int borrar_post_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
+	FILE *fp_org = fopen(f_org,"rb"),*fp_dest = fopen(f_dest,"wb");
+
+	post p;
+	int i, tamanio_origen, tamanio_destino, tamanio_post=sizeof(post);
+	
+	if(fp_org==NULL || fp_dest==NULL){
+		printf("error al leer o escribir durante la copia\n");
+		return 1; //error al leer o escribir
+	}
+	fseek(fp_org, 0, SEEK_END);
+	tamanio_origen=ftell(fp_org);
+	//comenzar a copiar todos los parametros antes del ultimo
+	for (i=0; i<(tamanio_origen-sizeof(post)); i+=sizeof(post)){
+		fseek(fp_org, i, SEEK_SET);
+		if (i==id){
+			fseek(fp_org, -tamanio_post, SEEK_END); //se posiciona en el principio del ultimo registro de origen
+		}
+		fread(&p, sizeof(post), 1, fp_org);
+		fseek(fp_dest, i, SEEK_SET);
+		fwrite(&p, sizeof(post), 1, fp_dest);
+	}
+	//finaliza etapa de copiado
+	fseek(fp_dest, 0, SEEK_END);
+	tamanio_destino=ftell(fp_dest);
+	if(tamanio_origen!=(tamanio_destino+sizeof(post))){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro post dentro de el
+		printf("el nuevo semi archivo_post no se copio hasta donde deberia\n");
 		return 1;	//problema al copiar
 	}
 	fclose(fp_org);
@@ -374,7 +427,7 @@ void log_administrador(int id_admin, FILE *admn){
 	char c[10], name[30], desc[100];
 	int intc=0;
 	usuario u, u_original;
-	post p/*, p_original*/;
+	post p, p_original;
 	tipo t/*, t_original*/;
 	time_t strtime;
 	struct tm * timeinfo;
@@ -382,7 +435,7 @@ void log_administrador(int id_admin, FILE *admn){
 	//hacer vista de top 5 de post
 	//hacer vista de usuarios existentes (por cualquier admin)------ FALTA ORDENARLOS
 
-	menu_admin:{
+	menu_admin:{ //mensaje de pregunta
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
@@ -435,6 +488,9 @@ void log_administrador(int id_admin, FILE *admn){
 					printf("Ingrese nombre de usuario a crear: ");
 					gets(u.avatar);
 					if (buscar_id_usuario(u.avatar, usrs)==-1){ //no se encuantra el nombre en uso
+						if (strcmp(u.avatar,"0")==0 || strcmp(u.avatar,"")==0){
+							continue;
+						}
 						break;
 					}
 					printf("   El nombre de usuario ya esta en uso, intente utilizar otro\n");
@@ -478,7 +534,7 @@ void log_administrador(int id_admin, FILE *admn){
 				}
 				goto menu_admin;
 				}
-		case 2:	modificar_usuario:{ //solo modifica el nombre de usuario y su preferencia
+		case 2:	modificar_usuario:{ //hacer que pregunte lo que se desea modificar... sin preguntar modifica el nombre de usuario y su preferencia
 				printf("Ingrese nombre de usuario a modificar: ");
 				gets(name);
 				if (strcmp(name,"0")==0){
@@ -661,10 +717,69 @@ void log_administrador(int id_admin, FILE *admn){
 				}
 				goto menu_admin;
 				}
-		case 5:	{//editar post*** sin terminar
-				break;
+		case 5:	modificar_post:{//editar post... solo las descripciones
+				printf("Ingrese nombre del post a modificar: ");
+				gets(name);
+				if (strcmp(name,"0")==0){
+					goto menu_admin;
 				}
-		case 6:	break; //eliminar post*** sin terminar
+				int id=buscar_id_post(name, pos);
+				if (id==-1){
+					printf("el post no existe\n   escriba 0 para volver al menu anterior\n\n");
+					goto modificar_post;
+				}
+				while(copiar_archivo("archivo_post.dat","archivo_post_temp.dat")){
+					printf("error al crear el archivo temporal de post\n");
+				}
+				fseek(pos, id, SEEK_SET);
+				fread(&p_original, sizeof(usuario),1, pos); //leyendo los datos antiguos
+				//recopilando nuevos datos
+				p.id_post=id;
+				p.id_admin=p_original.id_admin;
+				p.id_tipo=p_original.id_tipo;
+				strcpy(p.fecha,p_original.fecha);
+				printf("Ingrese nuevo nombre de post: ");
+				gets(p.imagen);
+				printf("Ingrese nueva leyenda: ");
+				gets(p.leyenda);
+				printf("Ingrese nueva descripcion: ");
+				gets(p.descripcion);
+				p.likes=p_original.likes;
+				p.dislikes=p_original.dislikes;
+				fseek(postmp, id, SEEK_SET);
+				if (fwrite(&p, sizeof(usuario),1, postmp)==1){
+					remove("archivo_post.dat");
+					if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("Edicion exitosa de post\n");
+					}
+					else{
+						printf("Problema al renombrar el archivo temporal\n");
+					}
+					fclose(postmp);
+				}
+				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
+				goto menu_admin;
+				}
+		case 6:	borrar_post:{ //eliminar usuario
+				printf("Ingrese nombre de post a borrar: ");
+				gets(name);
+				int id=buscar_id_post(name, pos); //donde se reemplazara el ultimo post
+				if (id==-1){
+					printf("post no encontrado\n");
+					goto borrar_post;
+				}
+				if (borrar_post_temp("archivo_post.dat","archivo_post_temp.dat",id)==0){
+					remove("archivo_post.dat");
+					if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("Eliminacion exitosa de post\n");
+					}
+					else{
+						printf("Problema al renombrar el archivo temporal\n");
+					}
+				}
+				else printf("Error de escritura, la eliminacion no se llevo a cabo\n");
+				goto menu_admin;
+				}
 		case 7:	break; //simplemente termina, por lo que te lleva al menu principal
 	}
 	fclose(usrs);
