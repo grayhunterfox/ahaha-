@@ -131,13 +131,13 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 				comentarios_mostrados++;
 				continue;
 			}
-			printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
+			//printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
 			printf("%d) %s: %s\n\n",comentarios_mostrados+1, u.avatar, com.texto);
 			comentarios_mostrados++;
 		}
 	}
 	if (comentarios_mostrados==0){
-		printf("No existen comentarios para este post\n\n");
+		printf("[No existen comentarios para este post]\n\n");
 		return 0;
 	}
 	fclose(archivo);
@@ -187,9 +187,9 @@ int copiar_archivo(char *f_org,char *f_dest){
 	char c;
 	int tamanio_origen, tamanio_destino;
 	
-	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia\n");
-		return 1; //error al leer o escribir
+	if(fp_org==NULL || fp_dest==NULL){ 		//error al leer o escribir
+		printf("error al leer o escribir durante la copia (copiar_archivo)\n");
+		return 1; 
 	}
 	
 	c=getc(fp_org);
@@ -202,9 +202,9 @@ int copiar_archivo(char *f_org,char *f_dest){
 	fseek(fp_dest, 0, SEEK_END);
 	tamanio_origen=ftell(fp_org);
 	tamanio_destino=ftell(fp_dest);
-	if(tamanio_origen!=tamanio_destino){
+	if(tamanio_origen!=tamanio_destino){ 	//si los tamaños de los archivos son distintos
 //		printf("error: archivos tienen distintos tamanios:\norigen: %d\ndestino: %d\n",tamanio_origen,tamanio_destino);
-		return 1; //si los tamaños de los archivos son distintos
+		return 1; 
 	}
 
 //	printf("se crea exitosamente el archivo temp de usuarios\n");
@@ -220,7 +220,7 @@ int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ /
 	int i, tamanio_origen, tamanio_destino;
 
 	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia\n");
+		printf("error al leer o escribir durante la copia (borrar_comntaris_d_usr)\n"); // error 1
 		return 1; //error al leer o escribir
 	}
 	fseek(fp_org, 0, SEEK_END);
@@ -246,14 +246,14 @@ int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ /
 	fclose(fp_dest);
 	return 0;	//copia exitosa
 }
-
+					//("archivo_usuario.dat","archivo_usuario_temp.dat",id)
 int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
 	FILE *fp_org = fopen(f_org,"rb"),*fp_dest = fopen(f_dest,"wb"); 
 	usuario u;
 	int i, tamanio_origen, tamanio_destino, tamanio_usuario=sizeof(usuario);
 	
 	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia\n");
+		printf("error al leer o escribir durante la copia (borrar_usuario_temp)\n");
 		return 1; //error al leer o escribir
 	}
 	fseek(fp_org, 0, SEEK_END);
@@ -275,8 +275,9 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 		printf("el nuevo semi archivo_usuario no se copio hasta donde deberia\n");
 		return 1;	//problema al copiar
 	}
+	
 	if (borrar_comentarios_de_usuario(id, tamanio_destino)==1){
-		printf("error al cambiar el nombre de los comentarios del usuario");
+		printf("error al cambiar el nombre de los comentarios del usuario (borrar_comentarios_de_usuario)\n");
 		return 1;
 	}
 	fclose(fp_org);
@@ -291,7 +292,7 @@ int borrar_post_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registr
 	int i, tamanio_origen, tamanio_destino, tamanio_post=sizeof(post);
 	
 	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia\n");
+		printf("error al leer o escribir durante la copia (borrar_post_temp)\n");
 		return 1; //error al leer o escribir
 	}
 	fseek(fp_org, 0, SEEK_END);
@@ -361,7 +362,7 @@ void log_usuario(int id_usuario){
 	FILE *comentmp = fopen("archivo_comentario_temp.dat","wb");
 
 	switch (intc){
-		case 1: modificar_usuario:{											//1.- editar perfil
+		case 1: modificar_usuario:{				//1.- editar perfil
 			printf("\nMenu de edicion:\n\t1.- Editar preferencia\n\t2.- Editar biografia\n\t3.- Volver.\nSeleccionar: ");
 			gets(c);
 			if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0){
@@ -466,7 +467,7 @@ void log_usuario(int id_usuario){
 						break;
 			}
 		}
-		case 2:{// seguir a un usuario
+		case 2:{								//2.- seguir a un usuario
 			fseek(usrs, id_usuario, SEEK_SET);
 			fread(&u_original, sizeof(usuario),1, usrs);
 			fseek(usrs, u_original.id_usuario_sigue, SEEK_SET);
@@ -507,7 +508,7 @@ void log_usuario(int id_usuario){
 				goto menu_user;
 			}
 			}break;
-		case 3: seleccionar_post:{
+		case 3: seleccionar_post:{				//3.- ver un post
 				if (pos==NULL || posts_vistos==0){
 					printf("Actualmente no existen post");
 					goto menu_user;
@@ -626,7 +627,7 @@ void log_usuario(int id_usuario){
 					case 4: goto menu_user;
 				}
 		}//termino del caso 3 (seleccionar post)
-		case 4: break;//volver
+		case 4: break;							//4.- volver
 	}
 	fclose(usrs);
 	fclose(usrstmp);
@@ -690,7 +691,7 @@ void log_administrador(int id_admin){
 	FILE *tiptmp = fopen("archivo_tipo_temp.dat","wb");
 
 	switch (intc){
-		case 1:	{//crear usuario
+		case 1:	{					//crear usuario
 				while(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){
 					printf("error al crear el archivo temporal\n");
 				}
@@ -751,7 +752,7 @@ void log_administrador(int id_admin){
 				}
 				goto menu_admin;
 				}
-		case 2:	modificar_usuario:{ //hacer que pregunte lo que se desea modificar... sin preguntar modifica el nombre de usuario y su preferencia
+		case 2:	modificar_usuario:{ //se pregunta lo que desea modificar... modifica el nombre de usuario y su preferencia
 				printf("Ingrese nombre de usuario a modificar: ");
 				gets(name);
 				if (strcmp(name,"0")==0){
@@ -816,7 +817,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 3:	borrar_usuario:{ //eliminar usuario.. falta que se borren sus comentarios tambien
+		case 3:	borrar_usuario:{ 	//eliminar usuario.. (!) falta que se borren sus comentarios tambien
 				printf("Ingrese nombre de usuario a borrar: ");
 				gets(name);
 				int id=buscar_id_usuario(name, usrs); //donde se reemplazara el ultimo usuario
@@ -836,7 +837,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la eliminacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 4: {//crear post
+		case 4: {					//crear post
 				if (pos==NULL){
 					printf("actualmente no existen post\n");
 					pos = fopen("archivo_post.dat","wb");
@@ -935,7 +936,7 @@ void log_administrador(int id_admin){
 				}
 				goto menu_admin;
 				}
-		case 5:	modificar_post:{//editar post... solo las descripciones
+		case 5:	modificar_post:{	//editar post... solo las descripciones
 				printf("Ingrese nombre del post a modificar: ");
 				gets(name);
 				if (strcmp(name,"0")==0){
@@ -978,7 +979,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 6:	borrar_post:{ //eliminar usuario.. falta que se borren los comentarios y el archivo tipo
+		case 6:	borrar_post:{ 		//eliminar post..    (!) falta que se borren los comentarios y el archivo tipo
 				printf("Ingrese nombre de post a borrar: ");
 				gets(name);
 				int id=buscar_id_post(name, pos); //donde se reemplazara el ultimo post
@@ -998,7 +999,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la eliminacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 7:	break; //simplemente termina, por lo que te lleva al menu principal
+		case 7:	break; 				//volver al menu principal
 	}
 	fclose(usrs);
 	fclose(usrstmp);
