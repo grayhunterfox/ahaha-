@@ -67,6 +67,36 @@ void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del 
 	fclose(archivo);
 }
 
+void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura y la preferencia que se mostrara
+	int post_mostrados=0, id, tamanio_archivo;
+	post p;
+	tipo t;
+	if (archivo==NULL){
+		printf("Actualmente no existen post creados\n");
+	return;
+	}
+	FILE *tip = fopen("archivo_tipo.dat","rb");
+	if (tip==NULL)
+		printf("error al abrir el archivo_tipo");
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	//Busqueda de posts en todo el archivo
+	for (id=0; id<=(tamanio_archivo-sizeof(post)); id+=sizeof(post)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&p, sizeof(post), 1, archivo);
+		fseek(tip, p.id_tipo, SEEK_SET);
+		fread(&t, sizeof(tipo), 1, tip);
+		if (t.type==pref){
+			printf("%s\t\tfecha de creacion: %s\nleyenda: %s\ndescripcion: %s\n\n", p.imagen, p.fecha, p.leyenda, p.descripcion);
+			post_mostrados++;
+		}
+	}
+	if (post_mostrados==0){
+		printf("No existen post de esta categoria\n");
+	}
+	fclose(archivo);
+}
+
 int buscar_id_usuario(char nombre[30], FILE *archivo){
 	int id, tamanio_archivo;
 	usuario u;
@@ -343,9 +373,20 @@ void log_administrador(int id_admin, FILE *admn){
 	//hacer vista de top 5 de post
 	//hacer vista de usuarios existentes (por cualquier admin)------ FALTA ORDENARLOS
 
-	menu_admin:{	//se utiliza el mismo formato que en el menu principal
+	menu_admin:{
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
+	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
+	printf("Graves:\n");
+	mostrar_post(fopen("archivo_post.dat","rb"),graves);
+	printf("Oldfag:\n");
+	mostrar_post(fopen("archivo_post.dat","rb"),oldfag);
+	printf("Newfag:\n");
+	mostrar_post(fopen("archivo_post.dat","rb"),newfag);
+	printf("Gores:\n");
+	mostrar_post(fopen("archivo_post.dat","rb"),gores);
+	printf("Happy:\n");
+	mostrar_post(fopen("archivo_post.dat","rb"),happy);
 	printf("\n-----------------------------------------\n");
 	printf("Menu administrador:\n\t1.- Crear nuevo usuario\n\t2.- Modificar usuario\n\t3.- Eliminar usuario\n\t4.- Crear nuevo post\n\t5.- Modificar post\n\t6.- Eliminar post.\n\t7.- Volver al menu principal.\nSeleccionar: ");
 	gets(c);
@@ -529,9 +570,8 @@ void log_administrador(int id_admin, FILE *admn){
 				}
 				copiar_archivo("archivo_tipo.dat","archivo_tipo_temp.dat");
 				fseek(tiptmp, 0, SEEK_END);
-				p.id_tipo=ftell(tiptmp);
+				t.id_tipo=ftell(tiptmp);
 				//datos archivo tipo
-				t.id_tipo=p.id_tipo;
 				menu_tipo_post:{ //peticion del tipo de post
 				printf("Tipo de post:\n   1.- Graves\n   2.- Oldfags\n   3.- Newfags\n   4.- Gores\n   5.- Happy\n Seleccionar: ");
 				gets(c);
@@ -544,7 +584,6 @@ void log_administrador(int id_admin, FILE *admn){
 				else if(strcmp(c,"3")==0){intc=3;}
 				else if(strcmp(c,"4")==0){intc=4;}
 				else if(strcmp(c,"5")==0){intc=5;}
-				
 				switch (intc){ //preferencia
 					case 1:	t.type = graves;
 							break;
@@ -575,16 +614,10 @@ void log_administrador(int id_admin, FILE *admn){
 				else if(strcmp(c,"8")==0){intc=8;}
 				else if(strcmp(c,"9")==0){intc=9;}
 				else if(strcmp(c,"10")==0){intc=10;}
-				t.calidad=intc;
-				}
-				if (fwrite(&t, sizeof(usuario),1, tiptmp)==1){ //usar un while en vez del if
-					remove("archivo_tipo.dat");
-					if(rename("archivo_tipo_temp.dat","archivo_tipo.dat")!=0){
-						printf("Problema al renombrar el archivo tipo\n");
-					}
-					fclose(usrstmp);
+				t.calidad=intc;							//se escribe la calidad
 				}
 				//continuar pidiendo datos del post
+				p.id_tipo=t.id_tipo;
 				strtime=time(NULL); //fecha y hora actual
 				timeinfo = localtime(&strtime);
 				strftime(p.fecha, 30, "%d/%m/%y %I:%M%p", timeinfo);
@@ -599,7 +632,15 @@ void log_administrador(int id_admin, FILE *admn){
 				strcpy(p.descripcion,desc);
 				p.likes = 0;
 				p.dislikes = 0;
-				if (fwrite(&p, sizeof(usuario),1, postmp)==1){ //usar un while en vez del if
+				//escritura tipo_temp
+				if (fwrite(&t, sizeof(tipo),1, tiptmp)==1){ //usar un while en vez del if
+					remove("archivo_tipo.dat");
+					if(rename("archivo_tipo_temp.dat","archivo_tipo.dat")!=0){
+						printf("Problema al renombrar el archivo tipo\n");
+					}
+					fclose(tiptmp);
+				}
+				if (fwrite(&p, sizeof(post),1, postmp)==1){ //usar un while en vez del if
 				remove("archivo_post.dat");
 				if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
 						printf("Creacion exitosa del post\n");
@@ -611,8 +652,10 @@ void log_administrador(int id_admin, FILE *admn){
 				}
 				goto menu_admin;
 				}
-		case 5:	break; //editar post
-		case 6:	break; //eliminar post
+		case 5:	{//editar post*** sin terminar
+				break;
+				}
+		case 6:	break; //eliminar post*** sin terminar
 		case 7:	break; //simplemente termina, por lo que te lleva al menu principal
 	}
 	fclose(usrs);
