@@ -72,7 +72,7 @@ void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura
 	post p;
 	tipo t;
 	if (archivo==NULL){
-		printf("Actualmente no existen post creados\n");
+		printf("\tActualmente no existen post creados\n");
 	return;
 	}
 	FILE *tip = fopen("archivo_tipo.dat","rb");
@@ -87,12 +87,13 @@ void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura
 		fseek(tip, p.id_tipo, SEEK_SET);
 		fread(&t, sizeof(tipo), 1, tip);
 		if (t.type==pref){
-			printf("%s\t\tfecha de creacion: %s\nleyenda: %s\ndescripcion: %s\n\n", p.imagen, p.fecha, p.leyenda, p.descripcion);
+			if (post_mostrados>0) printf("\t");
+			printf("post: \t\t%s\n\tfecha: \t\t%s\n\tleyenda:\t%s\n\n", p.imagen, p.fecha, p.leyenda);
 			post_mostrados++;
 		}
 	}
 	if (post_mostrados==0){
-		printf("No existen post de esta categoria\n");
+		printf("\tNo existen post de esta categoria\n\n");
 	}
 	fclose(archivo);
 }
@@ -186,8 +187,16 @@ void log_usuario(int id_usuario, FILE *user){
 	int intc=0;
 	usuario u, u_original;
 	
-	printf("\n-----------------------------------------\nPosts actuales:\n");
-	// mostrar_posts(fopen("archivo_post.dat","rb"));
+	fseek(user, id_usuario, SEEK_SET);
+	fread(&u_original, sizeof(usuario),1, user);
+	
+	printf("\n-----------------------------------------\nPosts actuales:\nCategoria\n");
+	if (u_original.preferencia==graves)	     printf("Graves: ");
+	else if (u_original.preferencia==oldfag) printf("Oldfag: ");
+	else if (u_original.preferencia==newfag) printf("Newfag: ");
+	else if (u_original.preferencia==gores) printf("Gores:  ");
+	else if (u_original.preferencia==happy) printf("Happy:  ");
+	mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
 	printf("\n-----------------------------------------\n");
 
 	menu_user:{ 																	// mismo formato que el menu principal
@@ -377,17 +386,17 @@ void log_administrador(int id_admin, FILE *admn){
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
-	printf("Graves:\n");
+	printf("Graves: ");
 	mostrar_post(fopen("archivo_post.dat","rb"),graves);
-	printf("Oldfag:\n");
+	printf("Oldfag: ");
 	mostrar_post(fopen("archivo_post.dat","rb"),oldfag);
-	printf("Newfag:\n");
+	printf("Newfag: ");
 	mostrar_post(fopen("archivo_post.dat","rb"),newfag);
-	printf("Gores:\n");
+	printf("Gores:  ");
 	mostrar_post(fopen("archivo_post.dat","rb"),gores);
-	printf("Happy:\n");
+	printf("Happy:  ");
 	mostrar_post(fopen("archivo_post.dat","rb"),happy);
-	printf("\n-----------------------------------------\n");
+	printf("-----------------------------------------\n");
 	printf("Menu administrador:\n\t1.- Crear nuevo usuario\n\t2.- Modificar usuario\n\t3.- Eliminar usuario\n\t4.- Crear nuevo post\n\t5.- Modificar post\n\t6.- Eliminar post.\n\t7.- Volver al menu principal.\nSeleccionar: ");
 	gets(c);
 	if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0 && strcmp(c,"5")!=0 && strcmp(c,"6")!=0 && strcmp(c,"7")!=0){
