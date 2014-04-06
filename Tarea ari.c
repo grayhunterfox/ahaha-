@@ -54,6 +54,7 @@ typedef struct usuarios{
 
 void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del que posee mas seguidores
 	int id, tamanio_archivo;
+	char pref[10];
 	usuario u;
 	fseek(archivo, 0, SEEK_END);
 	tamanio_archivo=ftell(archivo);
@@ -61,23 +62,29 @@ void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del 
 	for (id=sizeof(usuario); id<=(tamanio_archivo-sizeof(usuario)); id+=sizeof(usuario)){
 		fseek(archivo, id, SEEK_SET);
 		fread(&u, sizeof(usuario), 1, archivo);
-		printf("%s\t\tfecha de creacion: %s\n",u.avatar, u.fecha_creacion);
+		if (u.preferencia==graves) strcpy(pref,"Graves");
+		else if (u.preferencia==oldfag) strcpy(pref,"Oldfag");
+		else if (u.preferencia==newfag) strcpy(pref,"Newfag");
+		else if (u.preferencia==gores) strcpy(pref,"Gores");
+		else if (u.preferencia==happy) strcpy(pref,"Happy");
+		printf("%s\t\tPreferencia de posts: %s\n",u.avatar, pref);
 	}
 	if (tamanio_archivo==sizeof(usuario)) printf("Actualmente no existen usuarios\n");
 	fclose(archivo);
 }
 
-void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura y la preferencia que se mostrara
+int mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura y la preferencia que se mostrara
 	int post_mostrados=0, id, tamanio_archivo;
 	post p;
 	tipo t;
 	if (archivo==NULL){
 		printf("\tActualmente no existen post creados\n");
-	return;
+		return 0;
 	}
 	FILE *tip = fopen("archivo_tipo.dat","rb");
-	if (tip==NULL)
+	if (tip==NULL){
 		printf("error al abrir el archivo_tipo");
+	}
 	fseek(archivo, 0, SEEK_END);
 	tamanio_archivo=ftell(archivo);
 	//Busqueda de posts en todo el archivo
@@ -94,8 +101,41 @@ void mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura
 	}
 	if (post_mostrados==0){
 		printf("No existen post de esta categoria\n\n");
+		return 0;
 	}
 	fclose(archivo);
+	return post_mostrados;
+}
+
+int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura de comentarios y la id del post donde se encuentra
+	int id, tamanio_archivo, comentarios_mostrados=0;
+	comentario com;
+	usuario u;
+	
+	if (archivo==NULL){
+		printf("\tActualmente no existen comentarios\n\n");
+		return 0;
+	}
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	FILE *usrs = fopen("archivo_usuario.dat","rb");
+	//Busqueda de posts en todo el archivo
+	for (id=0; id<=(tamanio_archivo-sizeof(comentario)); id+=sizeof(comentario)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&com, sizeof(comentario), 1, archivo);
+		fseek(usrs, com.id_usuario, SEEK_SET);
+		fread(&u, sizeof(usuario), 1, usrs);
+		if (com.id_post==id_post){
+			printf("%d) %s: %s\n\n",comentarios_mostrados+1, u.avatar, com.texto);
+			comentarios_mostrados++;
+		}
+	}
+	if (comentarios_mostrados==0){
+		printf("No existen comentarios para este post\n\n");
+		return 0;
+	}
+	fclose(archivo);
+	return comentarios_mostrados;
 }
 
 int buscar_id_usuario(char nombre[30], FILE *archivo){
@@ -236,23 +276,28 @@ int borrar_post_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registr
 }
 
 void log_usuario(int id_usuario){
-	char c[10];
-	int intc=0;
+	char c[10], name[30];
+	int intc=0, posts_vistos=0;
 	usuario u, u_original;
+	post p_original;		//para leer posts
+	admin a_original;	//para leer al admin creador de cada post
+	comentario com/*, com_original*/;	//para leer y crear un nuevo comentario
 	
 	menu_user:{ // mismo formato que el menu principal
 		FILE *usrs = fopen("archivo_usuario.dat","rb");
 		fseek(usrs, id_usuario, SEEK_SET);
 		fread(&u_original, sizeof(usuario),1, usrs);
-		printf("\n-----------------------------------------\nPosts actuales:\nCategoria\n");
+		printf("\n-----------------------------------------\nPosts actuales:\n\n");
 		if (u_original.preferencia==graves)	     printf("Graves: ");
 		else if (u_original.preferencia==oldfag) printf("Oldfag: ");
 		else if (u_original.preferencia==newfag) printf("Newfag: ");
 		else if (u_original.preferencia==gores) printf("Gores:  ");
 		else if (u_original.preferencia==happy) printf("Happy:  ");
-		mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
-		printf("\n-----------------------------------------\n");
-		printf("Menu usuario:\n\t1.- Editar Perfil\n\t2.- Seguir a un usuario\n\t3.- Ver un post\n\t4.- Volver.\nSeleccionar: ");
+		posts_vistos=mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
+		printf("-----------------------------------------\n");
+		printf("Usuario:\t%s\n",u_original.avatar);
+		printf("-----------------------------------------\n");
+		printf("Menu usuario:\n\t1.- Editar Perfil\n\t2.- Seguir a un usuario\n\t3.- Ver un post\n\t4.- Volver al menu principal.\nSeleccionar: ");
 		gets(c);
 		if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0){
 			printf(" Respuesta no valida\n\n");
@@ -266,7 +311,11 @@ void log_usuario(int id_usuario){
 
 	FILE *usrs = fopen("archivo_usuario.dat","rb");
 	FILE *usrstmp = fopen("archivo_usuario_temp.dat","wb");
-	// FILE *postmp = fopen("archivo_post_temp.dat","ab");   
+	FILE *pos = fopen("archivo_post.dat","rb");
+	FILE *postmp = fopen("archivo_post_temp.dat","wb");
+	FILE *admn = fopen("archivo_admin.dat","rb");
+	FILE *comen = fopen("archivo_comentario.dat","rb");
+	FILE *comentmp = fopen("archivo_comentario_temp.dat","wb");
 
 	switch (intc){
 		case 1: modificar_usuario:{											//1.- editar perfil
@@ -292,7 +341,7 @@ void log_usuario(int id_usuario){
 						printf(" Respuesta no valida\n\n");
 						goto menu_preferencia_usuario;
 						}
-						
+
 					if (strcmp(c,"1")==0){intc=1;}					// no deberia ser un else if igual? total el anterior es un if...
 					else if(strcmp(c,"2")==0){intc=2;}	
 					else if(strcmp(c,"3")==0){intc=3;}
@@ -311,7 +360,6 @@ void log_usuario(int id_usuario){
 					case 5: u.preferencia = happy;
 					break;
 					}
-//.//////////////
 					fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 					fread(&u_original, sizeof(usuario),1, usrs);					// AHAHA
 					u.id_usuario=id_usuario;										
@@ -370,24 +418,28 @@ void log_usuario(int id_usuario){
 					}
 					else if(strcmp(c,"2")==0) goto modificar_usuario;
 					break;
-				
+				}
 				case 3:	goto menu_user;
-						break;			
-			}
+						break;
 			}
 		}
-		case 2:{		// seguir a un usuario
+		case 2:{// seguir a un usuario
+			fseek(usrs, id_usuario, SEEK_SET);
+			fread(&u_original, sizeof(usuario),1, usrs);
+			fseek(usrs, u_original.id_usuario_sigue, SEEK_SET);
+			fread(&u_original, sizeof(usuario),1, usrs);//usuario que se esta siguiendo
 			printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 			mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
+			printf("Actualmente sigues a: %s\n",u_original.avatar);
 			printf("\n-----------------------------------------\n");
 			ingresar_usuario_a_seguir:{
 				printf("Ingrese nombre de usuario a seguir: ");
-				gets(c);
-				if (!strcmp(c,"0")){
+				gets(name);
+				if (!strcmp(name,"0")){
 					goto menu_user;
 				}
-				if (buscar_id_usuario(c, usrs)==-1){
-					printf("no se encuentra el nombre, inténtelo nuevamente.\t(ingrese '0' para cancelar)\n");
+				if (buscar_id_usuario(name, usrs)==-1){
+					printf("no se encuentra el nombre, intentelo nuevamente.\n\tingrese '0' para cancelar\n");
 					goto ingresar_usuario_a_seguir;
 					break;
 				}}
@@ -398,7 +450,7 @@ void log_usuario(int id_usuario){
 			
 			fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 			fread(&u_original, sizeof(usuario),1, usrs);					// AHAHA
-			u.id_usuario_sigue= buscar_id_usuario(c, usrs);
+			u.id_usuario_sigue= buscar_id_usuario(name, usrs);
 			u.id_usuario=id_usuario;										
 			strcpy(u.fecha_creacion,u_original.fecha_creacion);				//pasar datos del original al u
 			strcpy(u.avatar,u_original.avatar);								//
@@ -412,18 +464,139 @@ void log_usuario(int id_usuario){
 				goto menu_user;
 			}
 			}break;
-		case 3: 				// ver posts
-		printf("\n-----------------------------------------\nPosts actuales:\nnnnaddah... :3");
-		// mostrar_posts(fopen("archivo_post.dat","rb"));
-		printf("\n-----------------------------------------\n");
-		
-		case 4: //volver
-			return;			//pa que se cierre no? :s
-		
+		case 3: seleccionar_post:{
+				if (pos==NULL || posts_vistos==0){
+					printf("Actualmente no existen post");
+					goto menu_user;
+				}
+				printf("Escriba el titulo del post\n");
+				gets(name);
+				if (strcmp(name,"0")==0){
+					goto menu_user;
+				}
+				int id=buscar_id_post(name, pos);
+				if (id==-1){
+					printf("el post no existe\n   escriba 0 para volver al menu anterior\n\n");
+					goto seleccionar_post;
+				}
+				menu_post:{
+				pos = fopen("archivo_post.dat","rb");
+				admn = fopen("archivo_admin.dat","rb");
+				postmp = fopen("archivo_post_temp.dat","wb");
+				comen = fopen("archivo_comentario.dat","rb");
+				comentmp = fopen("archivo_comentario_temp.dat","wb");
+				//se recolectan e imprimen los datos del post
+				fseek(pos, id, SEEK_SET);
+				fread(&p_original, sizeof(post), 1, pos);
+				fseek(admn, p_original.id_admin, SEEK_SET);
+				fread(&a_original, sizeof(admin), 1, admn);
+				printf("\n-----------------------------------------\nPost:\t%s\n",p_original.imagen);
+				printf("Creador del post: %s\tFecha de creacion: %s\n\n",a_original.nombre, p_original.fecha);
+				printf("Leyenda: %s\nDescripcion: %s\n",p_original.leyenda, p_original.descripcion);
+				printf("\t\tlikes: %d  - dislikes: %d\n\n",p_original.likes, p_original.dislikes);
+				mostrar_comentarios(comen,id);//comentarios mediante el archivo y la id del post
+				printf("-----------------------------------------\n\n");
+				
+				//preguntar si se desea dar like, dislike o comentar
+				printf("Menu post:\n\t1.- Dar like\n\t2.- Dar dislike\n\t3.- Comentar.\n\t4.- Volver al menu usuario.\nSeleccionar: ");
+				gets(c);
+				if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0){
+					printf("respuesta no valida\n\n");
+					goto menu_post;
+				}
+				if (strcmp(c,"1")==0){intc=1;} //probar intentando cambiar la variable
+				else if(strcmp(c,"2")==0){intc=2;}
+				else if(strcmp(c,"3")==0){intc=3;}
+				else if(strcmp(c,"4")==0){intc=4;}
+				}
+				
+				switch(intc){
+					case 1: {//dar like... se pueden dar ilimitados
+							//ya se recolectaron los datos antes en p_original
+							while(copiar_archivo("archivo_post.dat","archivo_post_temp.dat")){
+								printf("error al crear el archivo temporal de usuarios\n");
+							}
+							p_original.likes++;
+							fseek(postmp, id, SEEK_SET);
+							if (fwrite(&p_original, sizeof(post), 1, postmp)!=1){
+								printf("error al escribir sobre el archivo temporal\n");
+								goto menu_post;
+							}
+							else{
+								remove("archivo_post.dat");
+								rename("archivo_post_temp.dat","archivo_post.dat"); //condicionar como se debe
+								printf("Has dado like al post (Y)\n"); //Encerrar este comentario entre -----
+								fclose(postmp);
+								goto menu_post;
+							}
+					}
+					case 2: {//dar dislike... se pueden dar ilimitados
+							//ya se recolectaron los datos antes en p_original
+							while(copiar_archivo("archivo_post.dat","archivo_post_temp.dat")){
+								printf("error al crear el archivo temporal de usuarios\n");
+							}
+							p_original.dislikes++;
+							fseek(postmp, id, SEEK_SET);
+							if (fwrite(&p_original, sizeof(post), 1, postmp)!=1){
+								printf("error al escribir sobre el archivo temporal\n");
+								goto menu_post;
+							}
+							else{
+								remove("archivo_post.dat");
+								rename("archivo_post_temp.dat","archivo_post.dat"); //condicionar como se debe
+								printf("Has dado dislike al post (N)\n"); //Encerrar este comentario entre -----
+								fclose(postmp);
+								goto menu_post;
+							}
+					}
+					case 3: {//comentar
+							if (comen==NULL){
+								comen = fopen("archivo_comentario.dat","wb");
+							}
+							copiar_archivo("archivo_comentario.dat","archivo_comentario_temp.dat");
+							//obtencion de datos del comentario
+							fseek(comentmp, 0, SEEK_END);
+							com.id_comentario=ftell(comentmp);
+							com.id_post=id;		//se pide en seleccionar post.. linea 481
+							com.id_usuario=id_usuario;	//se pide en los parametros
+							com.id_comentario_respuesta=0;
+							printf("Escriba su comentario:\n");
+							gets(com.texto);
+							com.calificacion=5; //punto_intermedio
+							if (fwrite(&com, sizeof(comentario),1, comentmp)==1){ //usar un while en vez del if
+							remove("archivo_comentario.dat");
+							if(rename("archivo_comentario_temp.dat","archivo_comentario.dat")==0){
+								printf("Creacion exitosa del comentario\n");
+							}
+							else{
+								printf("Problema al renombrar el archivo comentario\n");
+							}
+							}
+							else{
+								printf("Problema al escribir en el archivo temporal\n");
+							}
+							fclose(comentmp);
+							goto menu_post;
+
+					}
+					case 4: goto menu_user;
+				}
+		}//termino del caso 3 (seleccionar post)
+		case 4: break;//volver
 	}
+	fclose(usrs);
+	fclose(usrstmp);
+	fclose(pos);
+	fclose(postmp);
+	fclose(admn);
+	fclose(comen);
+	fclose(comentmp);
+	remove("archivo_usuario_temp.dat");
+	remove("archivo_post_temp.dat");
+	remove("archivo_comentario_temp.dat");
 }
 
-void log_administrador(int id_admin, FILE *admn){
+void log_administrador(int id_admin){
 	char c[10], name[30], desc[100];
 	int intc=0;
 	usuario u, u_original;
@@ -435,7 +608,7 @@ void log_administrador(int id_admin, FILE *admn){
 	//hacer vista de top 5 de post
 	//hacer vista de usuarios existentes (por cualquier admin)------ FALTA ORDENARLOS
 
-	menu_admin:{ //mensaje de pregunta
+	menu_admin:{
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
@@ -599,7 +772,7 @@ void log_administrador(int id_admin, FILE *admn){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 3:	borrar_usuario:{ //eliminar usuario
+		case 3:	borrar_usuario:{ //eliminar usuario.. falta que se borren sus comentarios tambien
 				printf("Ingrese nombre de usuario a borrar: ");
 				gets(name);
 				int id=buscar_id_usuario(name, usrs); //donde se reemplazara el ultimo usuario
@@ -760,7 +933,7 @@ void log_administrador(int id_admin, FILE *admn){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 6:	borrar_post:{ //eliminar usuario
+		case 6:	borrar_post:{ //eliminar usuario.. falta que se borren los comentarios y el archivo tipo
 				printf("Ingrese nombre de post a borrar: ");
 				gets(name);
 				int id=buscar_id_post(name, pos); //donde se reemplazara el ultimo post
@@ -857,7 +1030,7 @@ int main(){ //menu de login
 					fseek(admn, i, SEEK_SET);
 					fread(&a, sizeof(admin), 1, admn);
 					if (strcmp(name,(a.nombre))==0){	//administrador encontrado
-						log_administrador(a.id_admin, admn);
+						log_administrador(a.id_admin);
 						goto menu_principal;
 					}
 					else if (i==(tamanio_archivo_adm-sizeof(admin))){
@@ -875,6 +1048,6 @@ int main(){ //menu de login
 	end:
 	fclose(usrs);
 	fclose(admn);
-	printf("\naaandate vo zarpao qlo lomgii y ke pazaaa");
+	printf("\nMarchant give 100 pls :C");
 	return 0;
 }
