@@ -107,6 +107,13 @@ void crear_admins(){
 int main(){
 	crear_user_default();
 	crear_admins();
+	FILE *tip=fopen("archivo_tipo.dat","wb");
+	FILE *comen=fopen("archivo_comentario.dat","wb");
+	FILE *pos=fopen("archivo_post.dat","wb");
+	fclose(tip);
+	fclose(comen);
+	fclose(pos);
+	
 //-------------------------------------------------//
 //---------probando la lectura de archivos---------//
 //-------------------------------------------------//
@@ -116,7 +123,7 @@ int main(){
 	FILE *user=fopen("archivo_usuario.dat","rb");
 	admin nesesitado;
 	usuario nadie;
-	int administrador=2; //0: marchant, 1:Mayastation, 2: Niko Tesla... en la practica se tendra su id por lo q esto no sera nesesario
+	int administrador=5; //0: marchant, 1:Mayastation, 2: Niko Tesla... en la practica se tendra su id por lo q esto no sera nesesario
 	int id=administrador*sizeof(admin);
 	fseek(archivo, id, SEEK_SET);
 	fread(&nesesitado, sizeof(admin), 1, archivo);
