@@ -67,7 +67,9 @@ void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del 
 		else if (u.preferencia==newfag) strcpy(pref,"Newfag");
 		else if (u.preferencia==gores) strcpy(pref,"Gores");
 		else if (u.preferencia==happy) strcpy(pref,"Happy");
-		printf("%s\t\tPreferencia de posts: %s\n",u.avatar, pref);
+		printf("%s",u.avatar);
+		if (strlen(u.avatar)<8) printf("\t");
+		printf("\tPreferencia de posts: %s\n",pref);//borrar el id usuario
 	}
 	if (tamanio_archivo==sizeof(usuario)) printf("Actualmente no existen usuarios\n");
 	fclose(archivo);
@@ -77,16 +79,18 @@ int mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura 
 	int post_mostrados=0, id, tamanio_archivo;
 	post p;
 	tipo t;
-	if (archivo==NULL){
-		printf("\tActualmente no existen post creados\n");
+	
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	
+	if (archivo==NULL || tamanio_archivo==0){
+		printf("No existen post de esta categoria\n");
 		return 0;
 	}
 	FILE *tip = fopen("archivo_tipo.dat","rb");
 	if (tip==NULL){
 		printf("error al abrir el archivo_tipo");
 	}
-	fseek(archivo, 0, SEEK_END);
-	tamanio_archivo=ftell(archivo);
 	//Busqueda de posts en todo el archivo
 	for (id=0; id<=(tamanio_archivo-sizeof(post)); id+=sizeof(post)){
 		fseek(archivo, id, SEEK_SET);
@@ -112,8 +116,10 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 	comentario com;
 	usuario u;
 	
-	if (archivo==NULL){
-		printf("\t[Actualmente no existen comentarios]\n\n");
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	if (archivo==NULL || tamanio_archivo==0){
+		printf("[No existen comentarios para este post]\n");
 		return 0;
 	}
 	fseek(archivo, 0, SEEK_END);
@@ -131,7 +137,7 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 				comentarios_mostrados++;
 				continue;
 			}
-			//printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
+//			printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
 			printf("%d) %s: %s\n\n",comentarios_mostrados+1, u.avatar, com.texto);
 			comentarios_mostrados++;
 		}
@@ -214,50 +220,71 @@ int copiar_archivo(char *f_org,char *f_dest){
 }
 
 int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
-	FILE *fp_org = fopen("archivo_comentario.dat","rb"),*fp_dest = fopen("archivo_comentario_temp.dat","wb"); 
-	
+	FILE *fp_org_com = fopen("archivo_comentario.dat","rb"),*fp_dest_com = fopen("archivo_comentario_temp.dat","wb"); 
+	FILE *fp_org_usr = fopen("archivo_usuario.dat","rb")/*,*fp_dest_usr = fopen("archivo_usuario_temp.dat","wb")*/;
+
 	comentario com;
+	usuario u;
+	
 	int i, tamanio_origen, tamanio_destino;
 
-	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia (borrar_comntaris_d_usr)\n"); // error 1
+	if(fp_org_com==NULL || fp_dest_com==NULL || fp_org_usr==NULL/* || fp_dest_usr==NULL*/){
+		printf("error al leer o escribir durante el cambio comentario del usuario\n");
 		return 1; //error al leer o escribir
 	}
-	fseek(fp_org, 0, SEEK_END);
-	tamanio_origen=ftell(fp_org);
-	//comenzar a copiar todos los parametros antes del ultimo
+	printf("\nRecorrido de los comentarios del usuario:\n");
+	fseek(fp_org_com, 0, SEEK_END);
+	tamanio_origen=ftell(fp_org_com);
+	//recorriendo los comentarios
 	for (i=0; i<=(tamanio_origen-sizeof(comentario)); i+=sizeof(comentario)){
-		fseek(fp_org, i, SEEK_SET);
-		fread(&com, sizeof(comentario), 1, fp_org);
+		fseek(fp_org_com, i, SEEK_SET);
+		fread(&com, sizeof(comentario), 1, fp_org_com);
+		fseek(fp_org_usr, com.id_usuario, SEEK_SET);
+		fread(&u, sizeof(comentario), 1, fp_org_usr);
+		printf("leyendo comentario %s (ID comentario: %d)\n\tcon id usuario %d\n", com.texto, com.id_comentario, com.id_usuario);
+		printf("segun el archivo_usuario, el usuario que comento (con id %d) es %s\n\n", u.id_usuario, u.avatar);
 		if (com.id_usuario==id_usuario_borrado){
 			com.id_usuario=0;
+			printf("***cambia la ID_usuario (del comentario) %d a: 0\n",id_usuario_borrado);
 		}
-		fseek(fp_dest, i, SEEK_SET);
-		fwrite(&com, sizeof(comentario), 1, fp_dest);
+		if (com.id_usuario==usuario_movido){
+			com.id_usuario=id_usuario_borrado;
+			printf("***cambia la ID_usuario (del comentario) %d a: %d\n", com.id_usuario, id_usuario_borrado);
+		}
+		fseek(fp_dest_com, i, SEEK_SET);
+		fwrite(&com, sizeof(comentario), 1, fp_dest_com);
 	}
 	//finaliza etapa de copiado
-	fseek(fp_dest, 0, SEEK_END);
-	tamanio_destino=ftell(fp_dest);
+	fseek(fp_dest_com, 0, SEEK_END);
+	tamanio_destino=ftell(fp_dest_com);
 	if(tamanio_origen!=tamanio_destino){ //si el tamaño de inicio es distinto al de destino incluyendo el tamaño que ocuparia otro usuario dentro de el
 		printf("el nuevo archivo_comentario no se copio hasta donde deberia\n");
 		return 1;	//problema al copiar
 	}
-	fclose(fp_org);
-	fclose(fp_dest);
+	else{ //el archivo temporal es del mismo tamaño que el anterior
+		remove("archivo_comentario.dat");
+		rename("archivo_comentario_temp.dat","archivo_comentario.dat");
+	}
+	fclose(fp_org_com);
+	fclose(fp_dest_com);
 	return 0;	//copia exitosa
 }
-					//("archivo_usuario.dat","archivo_usuario_temp.dat",id)
+
 int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
-	FILE *fp_org = fopen(f_org,"rb"),*fp_dest = fopen(f_dest,"wb"); 
+	FILE *fp_org = fopen("archivo_usuario.dat","rb"),*fp_dest = fopen("archivo_usuario_temp.dat","wb"); 
 	usuario u;
 	int i, tamanio_origen, tamanio_destino, tamanio_usuario=sizeof(usuario);
-	
+
 	if(fp_org==NULL || fp_dest==NULL){
-		printf("error al leer o escribir durante la copia (borrar_usuario_temp)\n");
+		printf("error al leer o escribir durante la copia\n");
 		return 1; //error al leer o escribir
 	}
 	fseek(fp_org, 0, SEEK_END);
 	tamanio_origen=ftell(fp_org);
+	if (borrar_comentarios_de_usuario(id, tamanio_origen-sizeof(usuario))==1){
+		printf("error al cambiar el nombre de los comentarios del usuario");
+		return 1;
+	}
 	//comenzar a copiar todos los parametros antes del ultimo
 	for (i=0; i<(tamanio_origen-sizeof(usuario)); i+=sizeof(usuario)){
 		fseek(fp_org, i, SEEK_SET);
@@ -275,14 +302,10 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 		printf("el nuevo semi archivo_usuario no se copio hasta donde deberia\n");
 		return 1;	//problema al copiar
 	}
-	
-	if (borrar_comentarios_de_usuario(id, tamanio_destino)==1){
-		printf("error al cambiar el nombre de los comentarios del usuario (borrar_comentarios_de_usuario)\n");
-		return 1;
-	}
 	fclose(fp_org);
 	fclose(fp_dest);
 	return 0;	//copia exitosa
+	
 }
 
 int borrar_post_temp(char *f_org,char *f_dest, int id){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
@@ -513,7 +536,7 @@ void log_usuario(int id_usuario){
 					printf("Actualmente no existen post");
 					goto menu_user;
 				}
-				printf("Escriba el titulo del post\n");
+				printf("Escriba el titulo del post: ");
 				gets(name);
 				if (strcmp(name,"0")==0){
 					goto menu_user;
@@ -820,6 +843,7 @@ void log_administrador(int id_admin){
 		case 3:	borrar_usuario:{ 	//eliminar usuario.. (!) falta que se borren sus comentarios tambien
 				printf("Ingrese nombre de usuario a borrar: ");
 				gets(name);
+				if (!strcmp("0",name)) goto menu_admin;
 				int id=buscar_id_usuario(name, usrs); //donde se reemplazara el ultimo usuario
 				if (id==-1){
 					printf("usuario no encontrado\n");
@@ -982,6 +1006,7 @@ void log_administrador(int id_admin){
 		case 6:	borrar_post:{ 		//eliminar post..    (!) falta que se borren los comentarios y el archivo tipo
 				printf("Ingrese nombre de post a borrar: ");
 				gets(name);
+				if (!strcmp("0",name)) goto menu_admin;
 				int id=buscar_id_post(name, pos); //donde se reemplazara el ultimo post
 				if (id==-1){
 					printf("post no encontrado\n");
