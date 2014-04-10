@@ -23,6 +23,7 @@ typedef struct usuarios{
 	enum tipo_post preferencia;
 	char avatar[30];
 	char bio[100];
+	int seguidores;
 	} usuario;
 
 void crear_user_default(){ //creando al usuario nadie que todos siguen
@@ -39,6 +40,7 @@ void crear_user_default(){ //creando al usuario nadie que todos siguen
 	u.preferencia = graves;		//cualquier wea
 	strcpy(u.avatar,"no esta siguiendo a nadie");
 	strcpy(u.bio,"este usuario no esta siguiendo a ningun usuario");
+	u.seguidores=-100000000;		//solo en caso de que ayan 100 millones millones q no sigan a nadie, no habrá problemas
 	fwrite(&u, sizeof(usuario),1, usrs);
 	fclose(usrs);
 	printf("escritura de usuario 'nadie' en 'archivo_usuario.dat' exitosa\n");
@@ -105,6 +107,13 @@ void crear_admins(){
 }
 
 int main(){
+	char c[10];
+	printf("realmente quieres restaurar la base de datos? (1:SI / cualquier otra cosa: NO)\n");
+	gets(c);
+	if (strcmp(c,"1")!=0) {
+		printf("No se borro nada de la base de datos");
+		return 0;
+	}
 	crear_user_default();
 	crear_admins();
 	FILE *tip=fopen("archivo_tipo.dat","wb");
@@ -117,7 +126,7 @@ int main(){
 //-------------------------------------------------//
 //---------probando la lectura de archivos---------//
 //-------------------------------------------------//
-// /*
+/*
 	printf("\nprobando la lectura de archivo admin:\n");
 	FILE *archivo=fopen("archivo_admin.dat","rb");
 	FILE *user=fopen("archivo_usuario.dat","rb");
@@ -133,6 +142,6 @@ int main(){
 	printf("fecha creacion usuario nadie: %s\n",nadie.fecha_creacion);
 	fclose(archivo);
 	fclose(user);
+//*/
 	return 0;
-// */
 }
