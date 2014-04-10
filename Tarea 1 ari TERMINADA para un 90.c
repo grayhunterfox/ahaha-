@@ -50,6 +50,7 @@ typedef struct usuarios{
 	enum tipo_post preferencia;
 	char avatar[30];
 	char bio[100];
+	int seguidores;
 	} usuario;
 
 void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del que posee mas seguidores
@@ -70,6 +71,7 @@ void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del 
 		printf("%s",u.avatar);
 		if (strlen(u.avatar)<8) printf("\t");
 		printf("\tPreferencia de posts: %s\n",pref);//borrar el id usuario
+		printf("Seguidores: %d\n",u.seguidores);
 	}
 	if (tamanio_archivo==sizeof(usuario)) printf("Actualmente no existen usuarios\n");
 	fclose(archivo);
@@ -221,7 +223,7 @@ int copiar_archivo(char *f_org,char *f_dest){
 
 int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
 	FILE *fp_org_com = fopen("archivo_comentario.dat","rb"),*fp_dest_com = fopen("archivo_comentario_temp.dat","wb"); 
-	FILE *fp_org_usr = fopen("archivo_usuario.dat","rb")/*,*fp_dest_usr = fopen("archivo_usuario_temp.dat","wb")*/;
+	FILE *fp_org_usr = fopen("archivo_usuario.dat","rb");
 
 	comentario com;
 	usuario u;
@@ -232,17 +234,21 @@ int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ /
 		printf("error al leer o escribir durante el cambio comentario del usuario\n");
 		return 1; //error al leer o escribir
 	}
-	printf("\nRecorrido de los comentarios del usuario:\n");
+	//printf("\nRecorrido de los comentarios del usuario:\n");
 	fseek(fp_org_com, 0, SEEK_END);
 	tamanio_origen=ftell(fp_org_com);
+	if (tamanio_origen==0){
+		//no existen comentarios, por lo que no es nesesario borrarles nada
+		return 0;
+	}
 	//recorriendo los comentarios
 	for (i=0; i<=(tamanio_origen-sizeof(comentario)); i+=sizeof(comentario)){
 		fseek(fp_org_com, i, SEEK_SET);
 		fread(&com, sizeof(comentario), 1, fp_org_com);
 		fseek(fp_org_usr, com.id_usuario, SEEK_SET);
 		fread(&u, sizeof(comentario), 1, fp_org_usr);
-		printf("leyendo comentario %s (ID comentario: %d)\n\tcon id usuario %d\n", com.texto, com.id_comentario, com.id_usuario);
-		printf("segun el archivo_usuario, el usuario que comento (con id %d) es %s\n\n", u.id_usuario, u.avatar);
+//		printf("leyendo comentario %s (ID comentario: %d)\n\tcon id usuario %d\n", com.texto, com.id_comentario, com.id_usuario);
+//		printf("segun el archivo_usuario, el usuario que comento (con id %d) es %s\n\n", u.id_usuario, u.avatar);
 		if (com.id_usuario==id_usuario_borrado){
 			com.id_usuario=0;
 			printf("***cambia la ID_usuario (del comentario) %d a: 0\n",id_usuario_borrado);
@@ -281,6 +287,7 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 	}
 	fseek(fp_org, 0, SEEK_END);
 	tamanio_origen=ftell(fp_org);
+	
 	if (borrar_comentarios_de_usuario(id, tamanio_origen-sizeof(usuario))==1){
 		printf("error al cambiar el nombre de los comentarios del usuario");
 		return 1;
@@ -290,8 +297,12 @@ int borrar_usuario_temp(char *f_org,char *f_dest, int id){ //toma el ultimo regi
 		fseek(fp_org, i, SEEK_SET);
 		if (i==id){
 			fseek(fp_org, -tamanio_usuario, SEEK_END); //se posiciona en el principio del ultimo registro de origen
+			fread(&u, sizeof(usuario), 1, fp_org);
+			u.id_usuario=id;
 		}
-		fread(&u, sizeof(usuario), 1, fp_org);
+		else {
+			fread(&u, sizeof(usuario), 1, fp_org);
+		}
 		fseek(fp_dest, i, SEEK_SET);
 		fwrite(&u, sizeof(usuario), 1, fp_dest);
 	}
@@ -354,16 +365,16 @@ void log_usuario(int id_usuario){
 		FILE *usrs = fopen("archivo_usuario.dat","rb");
 		fseek(usrs, id_usuario, SEEK_SET);
 		fread(&u_original, sizeof(usuario),1, usrs);
-		printf("\n-----------------------------------------\nPosts actuales:\n\n");
+		printf("\n-------------------------------------------------\nPosts actuales:\n\n");
 		if (u_original.preferencia==graves)	     printf("Graves: ");
 		else if (u_original.preferencia==oldfag) printf("Oldfag: ");
 		else if (u_original.preferencia==newfag) printf("Newfag: ");
 		else if (u_original.preferencia==gores) printf("Gores:  ");
 		else if (u_original.preferencia==happy) printf("Happy:  ");
 		posts_vistos=mostrar_post(fopen("archivo_post.dat","rb"),u_original.preferencia);
-		printf("-----------------------------------------\n");
+		printf("-------------------------------------------------\n");
 		printf("Usuario:\t%s\n",u_original.avatar);
-		printf("-----------------------------------------\n");
+		printf("-------------------------------------------------\n");
 		printf("Menu usuario:\n\t1.- Editar Perfil\n\t2.- Seguir a un usuario\n\t3.- Ver un post\n\t4.- Volver al menu principal.\nSeleccionar: ");
 		gets(c);
 		if (strcmp(c,"1")!=0 && strcmp(c,"2")!=0 && strcmp(c,"3")!=0 && strcmp(c,"4")!=0){
@@ -438,7 +449,9 @@ void log_usuario(int id_usuario){
 					if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){				//escritura correcta
 						remove("archivo_usuario.dat");								//borrar original
 						rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
-						printf("Edicion de preferencia exitosa\n");					//verificar despues el renombramiento, correcto ==0
+						printf("-----------------------------------------\n");
+						printf("Edicion de preferencia exitosa\n");
+						printf("-----------------------------------------\n");
 						fclose(usrstmp);
 						goto menu_user;
 					}
@@ -448,7 +461,7 @@ void log_usuario(int id_usuario){
 				case 2:	{	//nueva biografia
 					fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
 					fread(&u_original, sizeof(usuario),1, usrs);
-					printf("Biografia actual:\n\t%s\n-----------------------------------------\n",u_original.bio);				// (!) que imprima la bio anterior, no se si es correcto...
+					printf("Biografia actual:\n\t%s\n-------------------------------------------------\n",u_original.bio);				// (!) que imprima la bio anterior, no se si es correcto...
 					
 					menu_nueva_biografia:{
 						printf("ingresar biografia nueva?\n\t1.- Si\n\t2.- Cancelar\nSeleccion: ");
@@ -459,9 +472,9 @@ void log_usuario(int id_usuario){
 							goto menu_nueva_biografia;
 						}}
 					if (strcmp(c,"1")==0){		// ingresar nueva
-						printf("-----------------------------------------\ningrese su nueva biografia:\n");
+						printf("-------------------------------------------------\ningrese su nueva biografia:\n");
 						gets(u.bio);
-						printf("\n-----------------------------------------\n");
+						printf("\n-------------------------------------------------\n");
 						
 						while(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){	//crear temp
 							printf("error al crear el archivo temporal de usuarios\n");
@@ -477,6 +490,7 @@ void log_usuario(int id_usuario){
 						if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){				//escritura correct
 							remove("archivo_usuario.dat");								//borrar original
 							rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
+							printf("-----------------------------------------\n");
 							printf("Edicion de biografia exitosa\n-----------------------------------------\n");//verificar despues el renombramiento, correcto ==0
 							fclose(usrstmp);
 							goto menu_user;
@@ -495,41 +509,67 @@ void log_usuario(int id_usuario){
 			fread(&u_original, sizeof(usuario),1, usrs);
 			fseek(usrs, u_original.id_usuario_sigue, SEEK_SET);
 			fread(&u_original, sizeof(usuario),1, usrs);//usuario que se esta siguiendo
-			printf("\n-----------------------------------------\nUsuarios disponibles:\n");
+			printf("\n-------------------------------------------------\nUsuarios disponibles:\n");
 			mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
 			printf("Actualmente sigues a: %s\n",u_original.avatar);
 			printf("\n-----------------------------------------\n");
 			ingresar_usuario_a_seguir:{
 				printf("Ingrese nombre de usuario a seguir: ");
 				gets(name);
-				if (!strcmp(name,"0")){
+				if (strcmp(name,"0")==0){
 					goto menu_user;
 				}
-				if (buscar_id_usuario(name, usrs)==-1){
+				int id=buscar_id_usuario(name, usrs);
+				if (id==-1){
 					printf("no se encuentra el nombre, intentelo nuevamente.\n\tingrese '0' para cancelar\n");
 					goto ingresar_usuario_a_seguir;
-					break;
-				}}
-			
-			while(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){	//crear temp
-				printf("error al crear el archivo temporal de usuarios\n");
+				}
 			}
-			
-			fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario
-			fread(&u_original, sizeof(usuario),1, usrs);					// AHAHA
-			u.id_usuario_sigue= buscar_id_usuario(name, usrs);
-			u.id_usuario=id_usuario;										
-			strcpy(u.fecha_creacion,u_original.fecha_creacion);				//pasar datos del original al u
-			strcpy(u.avatar,u_original.avatar);								//
-			u.preferencia=u_original.preferencia;									//(!) revisar si es correcto
-			fseek(usrstmp, id_usuario, SEEK_SET);
-			if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){				//escritura correct
-				remove("archivo_usuario.dat");								//borrar original
-				rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
-				printf("#follow registrado\n");					//verificar despues el renombramiento, correcto ==0
-				fclose(usrstmp);
+			if(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){	//crear temp
+				printf("error al crear el archivo temporal de usuarios\n");
 				goto menu_user;
 			}
+			int id=buscar_id_usuario(name, usrs);
+			fseek(usrs, id_usuario, SEEK_SET);								//ir al lugar del usuario actual
+			fread(&u, sizeof(usuario),1, usrs);
+			
+			if (u.id_usuario_sigue==id){									//si ya seguias al usuario escrito
+				printf("Ya seguias a este usuario\n");
+				goto ingresar_usuario_a_seguir;
+			}
+			else if (u.id_usuario==id){
+				printf("No puedes seguirte a ti mismo! eso es patetico D:\n");
+				goto ingresar_usuario_a_seguir;
+			}
+			else if (u.id_usuario_sigue!=0){ 									//si antes ya seguia a alguien
+				fseek(usrs, u.id_usuario_sigue, SEEK_SET); 					//ir al usuario que se seguia
+				fread(&u_original, sizeof(usuario),1, usrs);				//u_original tiene los valores del usuario al que seguia
+				u_original.seguidores--;									//se resta uno a sus seguidores
+				fseek(usrstmp, u.id_usuario_sigue, SEEK_SET);
+				if (fwrite(&u_original, sizeof(usuario), 1, usrstmp)!=1){	//se sobreescribe en el archivo temporal los datos de quien seguia
+					printf("Error de escritura\n");
+					goto menu_user;
+				}
+			}
+			u.id_usuario_sigue=id;
+			fseek(usrstmp, id_usuario, SEEK_SET);							//ir al usuario actual (en el archivo temp)
+			if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){				//se sobreescribe en el archivo temporal los datos el usuario actual.. usuario
+
+				fseek(usrs, id, SEEK_SET);									//ir al usuario a seguir
+				fread(&u_original, sizeof(usuario),1, usrs);				//u_original tiene los valores del usuario nuevo al que sigue
+				u_original.seguidores++;
+				fseek(usrstmp, id, SEEK_SET);								//ir al usuario a seguir en el archivo temp
+				if (fwrite(&u_original, sizeof(usuario), 1, usrstmp)==1){
+					remove("archivo_usuario.dat");								//borrar original
+					rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 	//temp ahora es el original
+					printf("-----------------------------------------\n");
+					printf("#follow registrado\n");
+					printf("-----------------------------------------\n");
+					fclose(usrstmp);
+					goto menu_user;
+				}
+			}
+			printf("Error de escritura\n");
 			}break;
 		case 3: seleccionar_post:{				//3.- ver un post
 				if (pos==NULL || posts_vistos==0){
@@ -593,7 +633,9 @@ void log_usuario(int id_usuario){
 							else{
 								remove("archivo_post.dat");
 								rename("archivo_post_temp.dat","archivo_post.dat"); //condicionar como se debe
-								printf("Has dado like al post (Y)\n"); //Encerrar este comentario entre -----
+								printf("-----------------------------------------\n");
+								printf("Has dado like al post (Y)\n");
+								printf("-----------------------------------------\n");
 								fclose(postmp);
 								goto menu_post;
 							}
@@ -612,7 +654,9 @@ void log_usuario(int id_usuario){
 							else{
 								remove("archivo_post.dat");
 								rename("archivo_post_temp.dat","archivo_post.dat"); //condicionar como se debe
-								printf("Has dado dislike al post (N)\n"); //Encerrar este comentario entre -----
+								printf("-----------------------------------------\n");
+								printf("Has dado dislike al post (N)\n");
+								printf("-----------------------------------------\n");
 								fclose(postmp);
 								goto menu_post;
 							}
@@ -632,13 +676,15 @@ void log_usuario(int id_usuario){
 							gets(com.texto);
 							com.calificacion=5; //punto_intermedio
 							if (fwrite(&com, sizeof(comentario),1, comentmp)==1){ //usar un while en vez del if
-							remove("archivo_comentario.dat");
-							if(rename("archivo_comentario_temp.dat","archivo_comentario.dat")==0){
-								printf("Creacion exitosa del comentario\n");
-							}
-							else{
-								printf("Problema al renombrar el archivo comentario\n");
-							}
+								remove("archivo_comentario.dat");
+								if(rename("archivo_comentario_temp.dat","archivo_comentario.dat")==0){
+									printf("-----------------------------------------\n");
+									printf("Creacion exitosa del comentario\n");
+									printf("-----------------------------------------\n");
+								}
+								else{
+									printf("Problema al renombrar el archivo comentario\n");
+								}
 							}
 							else{
 								printf("Problema al escribir en el archivo temporal\n");
@@ -649,7 +695,7 @@ void log_usuario(int id_usuario){
 					}
 					case 4: goto menu_user;
 				}
-		}//termino del caso 3 (seleccionar post)
+		}//termino del caso 3 en el switch anterior (seleccionar post)
 		case 4: break;							//4.- volver
 	}
 	fclose(usrs);
@@ -663,6 +709,8 @@ void log_usuario(int id_usuario){
 	remove("archivo_post_temp.dat");
 	remove("archivo_comentario_temp.dat");
 }
+
+
 
 void log_administrador(int id_admin){
 	char c[10], name[30], desc[100];
@@ -763,10 +811,13 @@ void log_administrador(int id_admin){
 				}
 				}
 				strcpy(u.bio,"agrega una descripcion");
+				u.seguidores = 0;
 				if (fwrite(&u, sizeof(usuario), 1, usrstmp)==1){
 					remove("archivo_usuario.dat");
 					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Creacion exitosa de usuario\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo temporal\n");
@@ -826,11 +877,14 @@ void log_administrador(int id_admin){
 				}
 				}
 				strcpy(u.bio,u_original.bio);
+				u.seguidores=u_original.seguidores;
 				fseek(usrstmp, id, SEEK_SET);
 				if (fwrite(&u, sizeof(usuario),1, usrstmp)==1){
 					remove("archivo_usuario.dat");
 					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Edicion exitosa de usuario\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo temporal\n");
@@ -840,7 +894,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 3:	borrar_usuario:{ 	//eliminar usuario.. (!) falta que se borren sus comentarios tambien
+		case 3:	borrar_usuario:{ 	//eliminar usuario
 				printf("Ingrese nombre de usuario a borrar: ");
 				gets(name);
 				if (!strcmp("0",name)) goto menu_admin;
@@ -849,16 +903,51 @@ void log_administrador(int id_admin){
 					printf("usuario no encontrado\n");
 					goto borrar_usuario;
 				}
+				
+				//lo sig hace que los otros usuarios dejen de seguirlo
+				if(copiar_archivo("archivo_usuario.dat","archivo_usuario_temp.dat")){	//crear temp
+					printf("error al crear el archivo temporal de usuarios\n");
+					goto menu_admin;
+				}
+				if(copiar_archivo("archivo_usuario.dat","archivo_usuario_respaldo.dat")){	//crear respaldo para no perder los seguidores del usuario si este no se elimina
+					printf("error al crear el archivo de respaldo de usuarios\n");
+					goto menu_admin;
+				}
+				fseek(usrs, 0, SEEK_END);
+				int i, tamanio_origen=ftell(usrs);
+				for (i=0; i<=(tamanio_origen-sizeof(usuario)); i+=sizeof(usuario)){	//encuentra a todos los usuarios
+					fseek(usrs, i, SEEK_SET);
+					fread(&u, sizeof(usuario), 1, usrs);
+					if (u.id_usuario_sigue==id){
+						u.id_usuario_sigue=0;
+					}
+					fseek(usrstmp, i, SEEK_SET);
+					if (fwrite(&u, sizeof(usuario), 1, usrstmp)!=1){		//sobreescribe en el archivo temporal
+						printf("Error en la escritura al archivo temporal\n");
+						goto menu_admin;
+					}
+				}
+				remove("archivo_usuario.dat");											//borrar original
+				rename("archivo_usuario_temp.dat","archivo_usuario.dat"); 				//ya no posee los seguidores
 				if (borrar_usuario_temp("archivo_usuario.dat","archivo_usuario_temp.dat",id)==0){
 					remove("archivo_usuario.dat");
+					remove("archivo_usuario_respaldo.dat");
 					if(rename("archivo_usuario_temp.dat","archivo_usuario.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Eliminacion exitosa de usuario\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo temporal\n");
+						remove("archivo_usuario.dat");									//borrar original
+						rename("archivo_usuario_respaldo.dat","archivo_usuario.dat"); 	//temp ahora es el original
 					}
 				}
-				else printf("Error de escritura, la eliminacion no se llevo a cabo\n");
+				else{
+					printf("Error de escritura, la eliminacion no se llevo a cabo\n");
+					remove("archivo_usuario.dat");									//borrar original
+					rename("archivo_usuario_respaldo.dat","archivo_usuario.dat"); 	//temp ahora es el original
+				}
 				goto menu_admin;
 				}
 		case 4: {					//crear post
@@ -951,7 +1040,9 @@ void log_administrador(int id_admin){
 				if (fwrite(&p, sizeof(post),1, postmp)==1){ //usar un while en vez del if
 				remove("archivo_post.dat");
 				if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Creacion exitosa del post\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo post\n");
@@ -993,7 +1084,9 @@ void log_administrador(int id_admin){
 				if (fwrite(&p, sizeof(usuario),1, postmp)==1){
 					remove("archivo_post.dat");
 					if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Edicion exitosa de post\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo temporal\n");
@@ -1003,7 +1096,7 @@ void log_administrador(int id_admin){
 				else printf("Error de escritura, la modificacion no se llevo a cabo\n");
 				goto menu_admin;
 				}
-		case 6:	borrar_post:{ 		//eliminar post..    (!) falta que se borren los comentarios y el archivo tipo
+		case 6:	borrar_post:{ 		//eliminar post..    (!) falta que se borren los comentarios y el archivo tipo.. actualmente quedan como basura
 				printf("Ingrese nombre de post a borrar: ");
 				gets(name);
 				if (!strcmp("0",name)) goto menu_admin;
@@ -1015,7 +1108,9 @@ void log_administrador(int id_admin){
 				if (borrar_post_temp("archivo_post.dat","archivo_post_temp.dat",id)==0){
 					remove("archivo_post.dat");
 					if(rename("archivo_post_temp.dat","archivo_post.dat")==0){
+						printf("-----------------------------------------\n");
 						printf("Eliminacion exitosa de post\n");
+						printf("-----------------------------------------\n");
 					}
 					else{
 						printf("Problema al renombrar el archivo temporal\n");
@@ -1059,7 +1154,7 @@ int main(){ //menu de login
 	FILE *admn = fopen("archivo_admin.dat","rb");
 
 	if (usrs==NULL || admn==NULL){
-		printf("por favor ejecute el programa: 'creador_archivos.c' antes de ejecutar este");
+		printf("por favor ejecute el programa: 'restaurar_base_de_datos.c' antes de ejecutar este");
 		return 0;
 	}
 	
