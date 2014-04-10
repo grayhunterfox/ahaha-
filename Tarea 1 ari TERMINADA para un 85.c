@@ -71,7 +71,7 @@ void mostrar_usuarios(FILE *archivo){ //hacer que estos se ordenen a partir del 
 		printf("%s",u.avatar);
 		if (strlen(u.avatar)<8) printf("\t");
 		printf("\tPreferencia de posts: %s\n",pref);//borrar el id usuario
-		printf("Seguidores: %d\n",u.seguidores);
+//		printf("Seguidores: %d\n",u.seguidores);
 	}
 	if (tamanio_archivo==sizeof(usuario)) printf("Actualmente no existen usuarios\n");
 	fclose(archivo);
@@ -219,6 +219,28 @@ int copiar_archivo(char *f_org,char *f_dest){
 	fclose(fp_org);
 	fclose(fp_dest);
 	return 0;
+}
+
+void mostrar_usuarios_ordenados(FILE *archivo){
+	int i, id, tamanio_archivo, cant_usuarios;
+	usuario u;
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	cant_usuarios=tamanio_archivo/sizeof(usuario);
+	//Busqueda de usuario en todo el archivo
+	for (i=cant_usuarios; i>=0; i--){
+		for (id=sizeof(usuario); id<=(tamanio_archivo-sizeof(usuario)); id+=sizeof(usuario)){
+			fseek(archivo, id, SEEK_SET);
+			fread(&u, sizeof(usuario), 1, archivo);
+			if (u.seguidores==i){
+				printf("%s",u.avatar);
+				if (strlen(u.avatar)<8) printf("\t");
+				printf("\tSeguidores: %d\n",u.seguidores);
+			}
+		}
+	}
+	if (tamanio_archivo==sizeof(usuario)) printf("Actualmente no existen usuarios\n");
+	fclose(archivo);
 }
 
 int borrar_comentarios_de_usuario(int id_usuario_borrado, int usuario_movido){ //toma el ultimo registro y lo coloca en la posicion id reemplazando al que estaba en esa posicion
@@ -710,8 +732,6 @@ void log_usuario(int id_usuario){
 	remove("archivo_comentario_temp.dat");
 }
 
-
-
 void log_administrador(int id_admin){
 	char c[10], name[30], desc[100];
 	int intc=0;
@@ -726,7 +746,7 @@ void log_administrador(int id_admin){
 
 	menu_admin:{
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
-	mostrar_usuarios(fopen("archivo_usuario.dat","rb"));
+	mostrar_usuarios_ordenados(fopen("archivo_usuario.dat","rb"));
 	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
 	printf("Graves: ");
 	mostrar_post(fopen("archivo_post.dat","rb"),graves);
