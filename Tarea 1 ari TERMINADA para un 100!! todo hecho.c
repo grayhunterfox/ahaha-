@@ -835,34 +835,19 @@ void log_usuario(int id_usuario){
 							com.id_comentario_respuesta=-1;
 							printf("Escriba su comentario: (si se quiere responder a un usuario escriba el numero de comentario)\n");
 							gets(com.texto);
-							
-							
-							
-							
 							//comentario de comentario
-							
 							if (strlen(com.texto)<3){		//si el comentario posee menos de 3 letras
 								int num_comentario= atoi(com.texto);
 								if (num_comentario<=100){
-									printf("se busca el comentario numero: %d, del post con id: %d\n",num_comentario, id); //comentar esto
+//									printf("se busca el comentario numero: %d, del post con id: %d\n",num_comentario, id); //comentar esto
 									int id_com=buscar_id_comentario(num_comentario, id);	//id del comentario
-									if (id_com==-1){
-										printf("No existe el comentario %d\n",num_comentario); //comentar esto
-									}
-									else {
-										printf("se encuentra el id del comentario con valor: %d\n",id_com);
+									if (id_com!=-1){
 										printf("Escriba su comentario de respuesta:\n");
 										gets(com.texto);
-										com.id_comentario_respuesta=id_com;
+										com.id_comentario_respuesta=id_com; //comentar esto
 									}
 								}
 							}
-							
-							
-							
-							
-							
-							
 							com.calificacion=5; //punto_intermedio
 							if (fwrite(&com, sizeof(comentario),1, comentmp)==1){ //usar un while en vez del if
 								remove("archivo_comentario.dat");
