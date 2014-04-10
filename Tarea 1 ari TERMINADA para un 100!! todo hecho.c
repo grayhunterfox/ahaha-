@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 
 enum tipo_post{
 	graves,
@@ -166,19 +167,95 @@ int mostrar_post_ordenados(FILE *archivo){ //archivo de solo lectura y la prefer
 	return post_mostrados;
 }
 
+int buscar_id_comentario(int num_comentario, int id_post){
+	FILE *archivo= fopen("archivo_comentario.dat","rb");
+	
+	int id, tamanio_archivo, comentarios_mostrados=0;
+	comentario com;
+	
+	if (archivo==NULL){
+		printf("[No existen comentarios para este post]\n");
+		return -1;
+	}
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	if (tamanio_archivo==0){
+		printf("[No existen comentarios para este post]\n");
+		return -1;
+	}
+	for (id=0; id<=(tamanio_archivo-sizeof(comentario)); id+=sizeof(comentario)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&com, sizeof(comentario), 1, archivo);
+		if (com.id_comentario_respuesta!=-1){		//si el comentario es una respuesta a otro comentario
+			continue;								//no nos interesa
+		}
+		if (com.id_post==id_post){
+			comentarios_mostrados++;
+			if (comentarios_mostrados==num_comentario) {	//si el comentario coincide con el numero de comentario ingresado //si se esta respodiendo a la persona indicada
+				return com.id_comentario;
+			}
+		}
+	}
+	if (comentarios_mostrados==0){
+		printf("[No existen comentarios para este post]\n\n");
+		return -1;
+	}
+	fclose(archivo);
+	return -1;
+}
+
+int mostrar_comentarios_de_comentario(int id_comentario){
+	FILE *archivo= fopen("archivo_comentario.dat","rb");
+	FILE *usrs = fopen("archivo_usuario.dat","rb");
+
+	int id, tamanio_archivo;
+	comentario com;
+	usuario u;
+	
+	if (archivo==NULL){
+		return 0;
+	}
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	if (tamanio_archivo==0){
+		return 0;
+	}
+	//Busqueda de comentarios en todo el archivo
+	for (id=0; id<=(tamanio_archivo-sizeof(comentario)); id+=sizeof(comentario)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&com, sizeof(comentario), 1, archivo);
+		fseek(usrs, com.id_usuario, SEEK_SET);
+		fread(&u, sizeof(usuario), 1, usrs);
+		if (com.id_comentario_respuesta==id_comentario){
+			if (com.id_comentario_respuesta!=-1){
+				if (com.id_usuario==0){
+					printf("\t[usuario eliminado]: %s\n", com.texto);
+				}
+				else {
+					printf("\t%s: %s\n", u.avatar, com.texto);
+				}
+			}
+		}
+	}
+	fclose(archivo);
+	return 0;
+}
+
 int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura de comentarios y la id del post donde se encuentra
 	int id, tamanio_archivo, comentarios_mostrados=0;
 	comentario com;
 	usuario u;
 	
-	fseek(archivo, 0, SEEK_END);
-	tamanio_archivo=ftell(archivo);
-	if (archivo==NULL || tamanio_archivo==0){
+	if (archivo==NULL){
 		printf("[No existen comentarios para este post]\n");
 		return 0;
 	}
 	fseek(archivo, 0, SEEK_END);
 	tamanio_archivo=ftell(archivo);
+	if (tamanio_archivo==0){
+		printf("[No existen comentarios para este post]\n");
+		return 0;
+	}
 	FILE *usrs = fopen("archivo_usuario.dat","rb");
 	//Busqueda de posts en todo el archivo
 	for (id=0; id<=(tamanio_archivo-sizeof(comentario)); id+=sizeof(comentario)){
@@ -187,15 +264,20 @@ int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura d
 		fseek(usrs, com.id_usuario, SEEK_SET);
 		fread(&u, sizeof(usuario), 1, usrs);
 		if (com.id_post==id_post){
-			if (com.id_usuario==0) {
-				printf("%d) [usuario eliminado]: %s\n\n",comentarios_mostrados+1, com.texto);
+			if (com.id_comentario_respuesta==-1){		//si no es una respuesta
+				if (com.id_usuario==0) {
+					comentarios_mostrados++;
+					printf("%d) [usuario eliminado]: %s\n",comentarios_mostrados, com.texto);
+					mostrar_comentarios_de_comentario(com.id_comentario);
+					printf("\n");
+					continue;
+				}
 				comentarios_mostrados++;
-				continue;
+				printf("%d) %s: %s\n",comentarios_mostrados, u.avatar, com.texto);
 			}
-//			printf("leyendo usuario\nID segun comentario: %d\nID segun usuario: %d\navatar: %s\n",com.id_usuario, u.id_usuario, u.avatar);
-			printf("%d) %s: %s\n\n",comentarios_mostrados+1, u.avatar, com.texto);
-			comentarios_mostrados++;
 		}
+		mostrar_comentarios_de_comentario(com.id_comentario);
+		printf("\n");
 	}
 	if (comentarios_mostrados==0){
 		printf("[No existen comentarios para este post]\n\n");
@@ -648,7 +730,7 @@ void log_usuario(int id_usuario){
 			}break;
 		case 3: seleccionar_post:{				//3.- ver un post
 				if (pos==NULL || posts_vistos==0){
-					printf("Actualmente no existen post");
+					printf("Actualmente no existen post\n");
 					goto menu_user;
 				}
 				printf("Escriba el titulo del post: ");
@@ -656,7 +738,11 @@ void log_usuario(int id_usuario){
 				if (strcmp(name,"0")==0){
 					goto menu_user;
 				}
+				
+				
 				int id=buscar_id_post(name, pos);
+				
+				
 				if (id==-1){
 					printf("el post no existe\n   escriba 0 para volver al menu anterior\n\n");
 					goto seleccionar_post;
@@ -744,11 +830,39 @@ void log_usuario(int id_usuario){
 							//obtencion de datos del comentario
 							fseek(comentmp, 0, SEEK_END);
 							com.id_comentario=ftell(comentmp);
-							com.id_post=id;		//se pide en seleccionar post.. linea 481
-							com.id_usuario=id_usuario;	//se pide en los parametros
-							com.id_comentario_respuesta=0;
-							printf("Escriba su comentario:\n");
+							com.id_post=id;						//se pide en seleccionar post
+							com.id_usuario=id_usuario;			//se pide en los parametros
+							com.id_comentario_respuesta=-1;
+							printf("Escriba su comentario: (si se quiere responder a un usuario escriba el numero de comentario)\n");
 							gets(com.texto);
+							
+							
+							
+							
+							//comentario de comentario
+							
+							if (strlen(com.texto)<3){		//si el comentario posee menos de 3 letras
+								int num_comentario= atoi(com.texto);
+								if (num_comentario<=100){
+									printf("se busca el comentario numero: %d, del post con id: %d\n",num_comentario, id); //comentar esto
+									int id_com=buscar_id_comentario(num_comentario, id);	//id del comentario
+									if (id_com==-1){
+										printf("No existe el comentario %d\n",num_comentario); //comentar esto
+									}
+									else {
+										printf("se encuentra el id del comentario con valor: %d\n",id_com);
+										printf("Escriba su comentario de respuesta:\n");
+										gets(com.texto);
+										com.id_comentario_respuesta=id_com;
+									}
+								}
+							}
+							
+							
+							
+							
+							
+							
 							com.calificacion=5; //punto_intermedio
 							if (fwrite(&com, sizeof(comentario),1, comentmp)==1){ //usar un while en vez del if
 								remove("archivo_comentario.dat");
@@ -842,6 +956,7 @@ void log_administrador(int id_admin){
 					gets(u.avatar);
 					if (buscar_id_usuario(u.avatar, usrs)==-1){ //no se encuantra el nombre en uso
 						if (strcmp(u.avatar,"0")==0 || strcmp(u.avatar,"")==0){
+							printf("\tno se puede utilizar este nombre de usuario\n");
 							continue;
 						}
 						break;
