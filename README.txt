@@ -1,11 +1,12 @@
 El 0 por defecto se utiliza en todas las opciones para volver al menu anterior
 
 
-Lo que se puede hacer con la tarea:
-	mostrar todos los posts existentes
-		usuarios ven sólo los de su tipo
+Lo que se puede hacer sin errores con la tarea:
+		mostrar los 5 post con mejor calificacion (likes menos dislikes)
+		usuarios ven todos los post de su preferencia
 		(muestra post, fecha, leyenda)
-		admins ven todos los posts
+		admins ven el top 5 de post (en caso de haber calificacion repetida en el top 5, estos se mostraran en orden cronologico)
+		admins ven todos los usuarios disponibles, ordenandolos de los que posean mas seguidores a los que no posean
 
 	hacer login como usuario
 		editar perfil
@@ -21,9 +22,10 @@ Lo que se puede hacer con la tarea:
 			likes - dislikes
 			comentarios
 		agregar un comentario
+			comentar comentarios
 	hacer login como admin
 		crear, modificar y borrar un usuario
-		crear, modificar un post
+		crear, modificar y borrar un post
 
 
         █▌              █
