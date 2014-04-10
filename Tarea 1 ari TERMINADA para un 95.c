@@ -113,6 +113,59 @@ int mostrar_post(FILE *archivo, enum tipo_post pref){ //archivo de solo lectura 
 	return post_mostrados;
 }
 
+int mostrar_post_ordenados(FILE *archivo){ //archivo de solo lectura y la preferencia que se mostrara
+	int i, post_mostrados=0, id, tamanio_archivo, calific, calific_max=-1000000, calific_min=1000000;
+	post p;
+	
+	fseek(archivo, 0, SEEK_END);
+	tamanio_archivo=ftell(archivo);
+	
+	if (archivo==NULL || tamanio_archivo==0){
+		printf("No existen post\n\n");
+		return 0;
+	}
+	for (id=0; id<=(tamanio_archivo-sizeof(post)); id+=sizeof(post)){
+		fseek(archivo, id, SEEK_SET);
+		fread(&p, sizeof(post), 1, archivo);
+		calific=p.likes-p.dislikes;
+		if (calific>calific_max){
+			calific_max=calific;
+//			printf("calific_max: %d\n",calific_max);
+		}
+		if (calific<calific_min){
+			calific_min=calific;
+//			printf("calific_min: %d\n",calific_min);
+		}
+	}
+
+	for(i=calific_max; i>=calific_min; i--){
+		//Busqueda de posts en todo el archivo
+//		printf("Calificacion buscada: %d\n", i);
+		for (id=0; id<=(tamanio_archivo-sizeof(post)); id+=sizeof(post)){
+			fseek(archivo, id, SEEK_SET);
+			fread(&p, sizeof(post), 1, archivo);
+			calific=p.likes-p.dislikes;
+//			printf("Calificacion encontrada: %d\n\n", calific);
+			if (calific==i){
+				printf("post: \t\t%s\nfecha: \t\t%s\nleyenda:\t%s\nLikes:\t\t%d\nDislikes:\t%d\n\n", p.imagen, p.fecha, p.leyenda, p.likes, p.dislikes);
+				post_mostrados++;
+			}
+			if (post_mostrados>=5){
+				break;
+			}
+		}
+		if (post_mostrados>=5){
+			break;
+		}
+	}
+	if (post_mostrados==0){
+		printf("No existen post\n\n");
+		return 0;
+	}
+	fclose(archivo);
+	return post_mostrados;
+}
+
 int mostrar_comentarios(FILE *archivo, int id_post){ //archivo de solo lectura de comentarios y la id del post donde se encuentra
 	int id, tamanio_archivo, comentarios_mostrados=0;
 	comentario com;
@@ -747,17 +800,8 @@ void log_administrador(int id_admin){
 	menu_admin:{
 	printf("\n-----------------------------------------\nUsuarios disponibles:\n");
 	mostrar_usuarios_ordenados(fopen("archivo_usuario.dat","rb"));
-	printf("\n-----------------------------------------\nPost disponibles (todas las categorias):\n");
-	printf("Graves: ");
-	mostrar_post(fopen("archivo_post.dat","rb"),graves);
-	printf("Oldfag: ");
-	mostrar_post(fopen("archivo_post.dat","rb"),oldfag);
-	printf("Newfag: ");
-	mostrar_post(fopen("archivo_post.dat","rb"),newfag);
-	printf("Gores:  ");
-	mostrar_post(fopen("archivo_post.dat","rb"),gores);
-	printf("Happy:  ");
-	mostrar_post(fopen("archivo_post.dat","rb"),happy);
+	printf("\n-----------------------------------------\nTop 5 posts:\n");
+	mostrar_post_ordenados(fopen("archivo_post.dat","rb"));
 	printf("-----------------------------------------\n");
 	printf("Menu administrador:\n\t1.- Crear nuevo usuario\n\t2.- Modificar usuario\n\t3.- Eliminar usuario\n\t4.- Crear nuevo post\n\t5.- Modificar post\n\t6.- Eliminar post.\n\t7.- Volver al menu principal.\nSeleccionar: ");
 	gets(c);
