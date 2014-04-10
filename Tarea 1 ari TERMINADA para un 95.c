@@ -979,11 +979,17 @@ void log_administrador(int id_admin){
 				}
 				fseek(usrs, 0, SEEK_END);
 				int i, tamanio_origen=ftell(usrs);
+				fseek(usrs, id, SEEK_SET);
+				fread(&u, sizeof(usuario), 1, usrs);
+				int usuario_que_se_estaba_siguiendo=u.id_usuario_sigue;				//se guarda la id del usuario al que se estaba siguiendo
 				for (i=0; i<=(tamanio_origen-sizeof(usuario)); i+=sizeof(usuario)){	//encuentra a todos los usuarios
 					fseek(usrs, i, SEEK_SET);
 					fread(&u, sizeof(usuario), 1, usrs);
 					if (u.id_usuario_sigue==id){
 						u.id_usuario_sigue=0;
+					}
+					if (u.id_usuario==usuario_que_se_estaba_siguiendo){
+						u.seguidores--;
 					}
 					fseek(usrstmp, i, SEEK_SET);
 					if (fwrite(&u, sizeof(usuario), 1, usrstmp)!=1){		//sobreescribe en el archivo temporal
