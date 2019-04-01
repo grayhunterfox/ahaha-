@@ -1,3 +1,5 @@
+Tarea universitaria: creación y administración del backend de un sitio tipo red social utilizando C.
+
 El 0 por defecto se utiliza en todas las opciones para volver al menu anterior
 
 
